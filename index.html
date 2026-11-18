@@ -1,0 +1,2122 @@
+```html
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Corolla HEV 2022 • Tablero Flotilla GPS & OBD2</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #020617;
+            color: #f8fafc;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .font-mono-num {
+            font-family: 'JetBrains Mono', monospace;
+            font-variant-numeric: tabular-nums;
+        }
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        @keyframes pulseGlow {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.35); }
+            50% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+        }
+        .pulse-active {
+            animation: pulseGlow 2.2s infinite;
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-slide-up {
+            animation: slideUp 0.22s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col bg-slate-950 text-slate-100 select-none sm:select-auto">
+
+    <!-- Contenedor Principal Mobile-First -->
+    <div class="w-full max-w-lg mx-auto bg-slate-950 min-h-screen flex flex-col relative pb-24 border-x border-slate-900">
+
+        <!-- =========================================================
+             ENCABEZADO AUTOMOTRIZ Y BARRA DE TELEMETRÍA
+             ========================================================= -->
+        <header class="bg-slate-900/95 backdrop-blur-md border-b border-slate-800 px-4 pt-3.5 pb-3 sticky top-0 z-30">
+            <div class="flex items-center justify-between gap-2">
+                <div class="flex items-center gap-2.5 min-w-0">
+                    <div class="bg-gradient-to-br from-emerald-500 to-cyan-600 p-2 rounded-2xl shadow-lg shadow-emerald-950/50 shrink-0">
+                        <svg class="w-5 h-5 text-slate-950" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 17h14M6 17a2 2 0 11-4 0 2 2 0 014 0zm14 0a2 2 0 11-4 0 2 2 0 014 0zM3 13l1.5-5A2 2 0 016.4 6.5h11.2a2 2 0 011.9 1.5L21 13M3 13h18M3 13v4h1m17-4v4h-1" />
+                        </svg>
+                    </div>
+                    <div class="truncate">
+                        <div class="flex items-center gap-1.5">
+                            <h1 class="text-sm font-black tracking-tight text-white truncate">COROLLA HEV 2022</h1>
+                            <span class="text-[9px] font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-1.5 py-0.5 rounded-md">OBD2 / GPS</span>
+                        </div>
+                        <button onclick="abrirModalCalibrarOdo()" class="text-[11px] font-mono-num text-cyan-300 hover:text-cyan-200 flex items-center gap-1 mt-0.5" title="Toca para calibrar con el tablero de tu Corolla">
+                            <span id="header-odo-total">Odo: 45,200.0 km</span>
+                            <span class="text-[9px] bg-slate-800 px-1.5 py-0.2 rounded text-slate-300">✎</span>
+                        </button>
+                    </div>
+                </div>
+                <!-- Desglose de tramos y sellos de Odómetro en curso -->
+                <div id="ciclo-tramos-strip" class="hidden mt-3 bg-slate-950/90 border border-slate-800 rounded-2xl p-2.5 space-y-1.5 text-[11px] font-mono-num">
+                    <div class="flex items-center justify-between">
+                        <span class="text-amber-300">A→B: <strong id="strip-ab">0.00</strong> km</span>
+                        <span class="text-emerald-400">B→C: <strong id="strip-bc">0.00</strong> km</span>
+                        <span id="strip-ret-lbl" class="text-slate-400">C→A: <strong id="strip-ca">0.00</strong> km</span>
+                    </div>
+                    <div id="strip-odos-hitos" class="flex flex-wrap gap-x-2.5 gap-y-0.5 text-[10px] text-cyan-300/90 border-t border-slate-800/80 pt-1.5">
+                        <!-- Sellos de odómetro en vivo -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- =====================================================
+                 ZONA DE BOTONES DE 1 TOQUE (CAMBIAN SEGÚN LA FASE)
+                 ===================================================== -->
+            <section id="zona-botones-1toque" class="space-y-3">
+
+                <!-- ESTADO 1: EN BASE (IDLE) -->
+                <div id="controles-fase-base" class="space-y-3">
+                    <button onclick="accionSalirDeBase()" class="w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 active:scale-[0.98] text-slate-950 font-black py-5 px-5 rounded-3xl shadow-lg shadow-emerald-950/60 transition flex items-center justify-between">
+                        <div class="text-left">
+                            <span class="block text-lg leading-tight">🟢 Salir de Base (Ir por Cliente)</span>
+                            <span class="block text-xs font-bold text-emerald-950/80 mt-0.5">Sella Odo Salida e inicia acercamiento (A → B)</span>
+                        </div>
+                        <span class="text-2xl">🚕</span>
+                    </button>
+
+                    <button onclick="accionIniciarPersonal()" class="w-full bg-purple-950/60 hover:bg-purple-900/70 active:scale-[0.98] text-purple-200 border-2 border-purple-500/40 font-extrabold py-4 px-5 rounded-3xl transition flex items-center justify-between">
+                        <div class="text-left">
+                            <span class="block text-base leading-tight">🟣 Iniciar Vuelta Personal</span>
+                            <span class="block text-[11px] font-medium text-purple-300/80 mt-0.5">Sin sueldo • Descuenta costo puro/km hacia cajas del auto</span>
+                        </div>
+                        <span class="text-xl">🏠</span>
+                    </button>
+                </div>
+
+                <!-- ESTADO 2: YENDO POR CLIENTE (A -> B) -->
+                <div id="controles-fase-ab" class="hidden space-y-3">
+                    <button onclick="accionRecogiCliente()" class="w-full bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 active:scale-[0.98] text-slate-950 font-black py-5 px-5 rounded-3xl shadow-lg shadow-amber-950/50 transition flex items-center justify-between">
+                        <div class="text-left">
+                            <span class="block text-lg leading-tight">📍 Recogí al Cliente</span>
+                            <span class="block text-xs font-bold text-amber-950/80 mt-0.5">Sella Odo Recogida e inicia viaje efectivo (B → C)</span>
+                        </div>
+                        <span class="text-2xl">🙋‍♂️</span>
+                    </button>
+
+                    <button onclick="cancelarCicloActivo()" class="w-full bg-slate-900 hover:bg-slate-800 text-slate-400 border border-slate-800 font-bold py-2.5 rounded-2xl text-xs transition">
+                        ✕ Cancelar salida y volver a Base
+                    </button>
+                </div>
+
+                <!-- ESTADO 3: CON CLIENTE A BORDO (B -> C) -->
+                <div id="controles-fase-bc" class="hidden space-y-3">
+                    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-3">
+                        <span class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Aplicar Tarifa Fija (Opcional):</span>
+                        <div id="ruta-pills-tarifas" class="flex gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
+                            <!-- Llenado por JS -->
+                        </div>
+                    </div>
+
+                    <button onclick="accionLlegueDestinoCliente()" class="w-full bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-300 hover:to-blue-400 active:scale-[0.98] text-slate-950 font-black py-5 px-5 rounded-3xl shadow-lg shadow-cyan-950/50 transition flex items-center justify-between">
+                        <div class="text-left">
+                            <span class="block text-lg leading-tight">🏁 Llegué al Destino (Dejé al Cliente)</span>
+                            <span class="block text-xs font-bold text-slate-950/80 mt-0.5">Sella Odo Destino y elige: Esperar, Regresar o Zona</span>
+                        </div>
+                        <span class="text-2xl">📍</span>
+                    </button>
+                </div>
+
+                <!-- ESTADO 3B: DECISIÓN EN DESTINO C (ESPERAR REDONDO / REGRESAR VACÍO / QUEDARSE EN ZONA) -->
+                <div id="controles-fase-destino" class="hidden space-y-2.5">
+                    <div class="bg-cyan-950/40 border border-cyan-500/40 rounded-2xl p-3 flex items-center justify-between text-xs">
+                        <div>
+                            <span class="text-cyan-300 font-extrabold block">🏁 Llegaste al Destino (Punto C)</span>
+                            <span id="dest-resumen-ida" class="text-[11px] text-slate-300 font-mono-num">Ida: 0.00 km • Base ida: $0</span>
+                        </div>
+                        <span id="dest-odo-tag" class="text-[10px] font-mono-num bg-slate-900 border border-slate-700 px-2 py-1 rounded-lg text-cyan-200">Odo: 0</span>
+                    </div>
+
+                    <button onclick="accionIniciarEsperaRedondo()" class="w-full bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 active:scale-[0.98] text-slate-950 font-black py-4 px-5 rounded-3xl shadow-lg transition flex items-center justify-between">
+                        <div class="text-left">
+                            <span class="block text-base leading-tight">⏳ Esperar Cliente (Viaje Redondo)</span>
+                            <span class="block text-[11px] font-bold text-amber-950/80">Cronómetro espera ($2.50/min) + 50% tarifa regreso</span>
+                        </div>
+                        <span class="text-2xl">⏱️</span>
+                    </button>
+
+                    <button onclick="abrirModalCobroViajeSencillo('regreso')" class="w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 active:scale-[0.98] text-slate-950 font-black py-4 px-5 rounded-3xl shadow-lg transition flex items-center justify-between">
+                        <div class="text-left">
+                            <span class="block text-base leading-tight">🏠 Regresar Vacío a Base</span>
+                            <span class="block text-[11px] font-bold text-emerald-950/80">Cobra viaje sencillo y mide regreso (sueldo activo)</span>
+                        </div>
+                        <span class="text-xl">↩️</span>
+                    </button>
+
+                    <button onclick="abrirModalCobroViajeSencillo('zona')" class="w-full bg-indigo-600 hover:bg-indigo-500 active:scale-[0.98] text-white font-extrabold py-4 px-5 rounded-3xl shadow-lg transition flex items-center justify-between">
+                        <div class="text-left">
+                            <span class="block text-base leading-tight">📍 Quedarme en Zona</span>
+                            <span class="block text-[11px] text-indigo-200">Cobra viaje sencillo y pausa en 0 km esperando pasaje</span>
+                        </div>
+                        <span class="text-xl">🛑</span>
+                    </button>
+                </div>
+
+                <!-- ESTADO 3C: ESPERANDO CLIENTE PARA VIAJE REDONDO -->
+                <div id="controles-fase-espera" class="hidden space-y-3">
+                    <div class="bg-amber-950/50 border-2 border-amber-500/50 rounded-3xl p-4 text-center space-y-1">
+                        <span class="text-[10px] font-extrabold uppercase tracking-wider text-amber-300">⏱️ Tiempo de Espera Acumulado</span>
+                        <div id="vivo-espera-reloj" class="text-3xl font-mono-num font-black text-white">00:00</div>
+                        <p class="text-xs text-amber-200 font-mono-num">
+                            Cargo espera: <strong id="vivo-espera-pesos">$0.00</strong> ($2.50/min)
+                        </p>
+                    </div>
+
+                    <button onclick="accionIniciarRegresoConCliente()" class="w-full bg-gradient-to-r from-emerald-400 to-cyan-500 hover:from-emerald-300 hover:to-cyan-400 active:scale-[0.98] text-slate-950 font-black py-5 px-5 rounded-3xl shadow-lg transition flex items-center justify-between">
+                        <div class="text-left">
+                            <span class="block text-base leading-tight">🔄 Iniciar Regreso con Cliente (50% tarifa)</span>
+                            <span class="block text-xs font-bold text-slate-950/80 mt-0.5">Detiene espera y mide el trayecto de regreso</span>
+                        </div>
+                        <span class="text-2xl">🚕</span>
+                    </button>
+                </div>
+
+                <!-- ESTADO 3D: REGRESANDO CON CLIENTE A BORDO (VIAJE REDONDO C -> B) -->
+                <div id="controles-fase-regreso-cliente" class="hidden space-y-3">
+                    <button onclick="abrirModalCobroViajeRedondo()" class="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 active:scale-[0.98] text-slate-950 font-black py-5 px-5 rounded-3xl shadow-lg transition flex items-center justify-between">
+                        <div class="text-left">
+                            <span class="block text-lg leading-tight">🏁 Finalizar Viaje Redondo</span>
+                            <span class="block text-xs font-bold text-slate-950/80 mt-0.5">Sella Odo Fin • Suma Ida + Espera + 50% Regreso</span>
+                        </div>
+                        <span class="text-2xl">💵</span>
+                    </button>
+                </div>
+
+                <!-- ESTADO 4: EN ZONA (ESPERANDO OTRO PASAJE SIN REGRESAR VACÍO) -->
+                <div id="controles-fase-zona" class="hidden space-y-3">
+                    <div class="bg-indigo-950/50 border border-indigo-500/40 rounded-2xl p-3 text-center">
+                        <p class="text-xs font-bold text-indigo-200">📍 Estás en zona destino con el contador pausado</p>
+                        <p class="text-[11px] text-indigo-300/80 mt-0.5">Si te cae un pasaje de regreso, ahorrarás los km muertos.</p>
+                    </div>
+
+                    <button onclick="accionNuevoClienteEnZona()" class="w-full bg-gradient-to-r from-emerald-500 to-teal-600 active:scale-[0.98] text-slate-950 font-black py-4 px-5 rounded-3xl shadow-lg transition flex items-center justify-between">
+                        <div class="text-left">
+                            <span class="block text-base leading-tight">🚕 Ir por Nuevo Cliente en Zona</span>
+                            <span class="block text-xs font-bold text-emerald-950/80">Sella Odo actual e inicia acercamiento (A → B)</span>
+                        </div>
+                        <span class="text-xl">➕</span>
+                    </button>
+
+                    <button onclick="accionIniciarRegresoBase()" class="w-full bg-slate-800 hover:bg-slate-700 active:scale-[0.98] text-white border border-slate-700 font-extrabold py-4 px-5 rounded-3xl transition flex items-center justify-between">
+                        <div class="text-left">
+                            <span class="block text-base leading-tight">🏠 Iniciar Regreso Vacío a Base</span>
+                            <span class="block text-[11px] text-slate-400">Registra los km de regreso (C → A) y tu sueldo hasta casa</span>
+                        </div>
+                        <span class="text-xl">↩️</span>
+                    </button>
+                </div>
+
+                <!-- ESTADO 5: REGRESO VACÍO A BASE (CON BOTÓN INTERCEPTAR) O VUELTA PERSONAL -->
+                <div id="controles-fase-regreso-personal" class="hidden space-y-3">
+                    <!-- Botón Naranja Interceptar (solo visible cuando vas regresando vacío a Base) -->
+                    <button id="btn-interceptar-servicio" onclick="accionInterceptarServicio()" class="hidden w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 active:scale-[0.98] text-slate-950 font-black py-4 px-5 rounded-3xl shadow-lg shadow-orange-950/50 transition flex items-center justify-between">
+                        <div class="text-left">
+                            <span class="block text-base leading-tight">🔄 Interceptar / Ir por Otro Cliente</span>
+                            <span id="lbl-sub-interceptar" class="block text-[11px] font-bold text-orange-950/90 mt-0.5">Cierra regreso aquí e inicia A→B del nuevo servicio</span>
+                        </div>
+                        <span class="text-2xl">⚡</span>
+                    </button>
+
+                    <button onclick="accionLlegueABase()" class="w-full bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 active:scale-[0.98] text-slate-950 font-black py-5 px-5 rounded-3xl shadow-lg transition flex items-center justify-between">
+                        <div class="text-left">
+                            <span class="block text-lg leading-tight">🏠 Llegué a Base</span>
+                            <span id="lbl-sub-llegue-base" class="block text-xs font-bold text-slate-950/80 mt-0.5">Sella Odo Base y reparte saldos en Bóvedas</span>
+                        </div>
+                        <span class="text-2xl">✅</span>
+                    </button>
+                </div>
+            </section>
+
+            <!-- Grid de las 4 Bóvedas Vivas -->
+            <section class="grid grid-cols-2 gap-3">
+                <!-- 1. Caja Gasolina -->
+                <div class="bg-slate-900 border border-amber-500/30 rounded-3xl p-4 flex flex-col justify-between space-y-3">
+                    <div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-lg">⛽</span>
+                            <span class="text-[9px] font-extrabold uppercase bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-md">Combustible</span>
+                        </div>
+                        <p class="text-[11px] font-semibold text-slate-400 mt-2">Caja Gasolina</p>
+                        <p id="bov-gas-saldo" class="text-xl font-mono-num font-black text-amber-400 mt-0.5">$0.00</p>
+                        <p id="bov-gas-sub" class="text-[10px] text-slate-500 mt-0.5">Rend: 20.0 km/L</p>
+                    </div>
+                    <button onclick="abrirModalGasolina()" class="w-full bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-500/40 font-bold text-[11px] py-2 rounded-xl transition">
+                        + Recarga Gasolina
+                    </button>
+                </div>
+
+                <!-- 2. Caja Mantenimiento / Taller -->
+                <div class="bg-slate-900 border border-cyan-500/30 rounded-3xl p-4 flex flex-col justify-between space-y-3">
+                    <div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-lg">🔧</span>
+                            <span class="text-[9px] font-extrabold uppercase bg-cyan-500/20 text-cyan-300 px-2 py-0.5 rounded-md">Desgaste</span>
+                        </div>
+                        <p class="text-[11px] font-semibold text-slate-400 mt-2">Caja Taller / Llantas</p>
+                        <p id="bov-taller-saldo" class="text-xl font-mono-num font-black text-cyan-400 mt-0.5">$0.00</p>
+                        <p id="bov-taller-sub" class="text-[10px] text-slate-500 mt-0.5">Reserva $0.90/km</p>
+                    </div>
+                    <button onclick="abrirModalTaller()" class="w-full bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-200 border border-cyan-500/40 font-bold text-[11px] py-2 rounded-xl transition">
+                        - Gasto Taller/Auto
+                    </button>
+                </div>
+
+                <!-- 3. Tu Sueldo Libre -->
+                <div class="bg-slate-900 border border-emerald-500/30 rounded-3xl p-4 flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-lg">👨‍✈️</span>
+                            <span class="text-[9px] font-extrabold uppercase bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-md">Chofer</span>
+                        </div>
+                        <p class="text-[11px] font-semibold text-slate-400 mt-2">Tu Sueldo Libre</p>
+                        <p id="bov-sueldo-saldo" class="text-xl font-mono-num font-black text-emerald-400 mt-0.5">$0.00</p>
+                    </div>
+                    <p id="bov-sueldo-sub" class="text-[10px] text-slate-400 mt-2 leading-tight">Bruto: $0 • Pers: -$0</p>
+                </div>
+
+                <!-- 4. Caja Utilidad / Mensualidad -->
+                <div class="bg-slate-900 border border-indigo-500/30 rounded-3xl p-4 flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-lg">🏦</span>
+                            <span class="text-[9px] font-extrabold uppercase bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded-md">Empresa</span>
+                        </div>
+                        <p class="text-[11px] font-semibold text-slate-400 mt-2">Utilidad / Crédito</p>
+                        <p id="bov-util-saldo" class="text-xl font-mono-num font-black text-indigo-400 mt-0.5">$0.00</p>
+                    </div>
+                    <p id="bov-util-sub" class="text-[10px] text-slate-400 mt-2 leading-tight">Cobrado total: $0</p>
+                </div>
+            </section>
+
+            <!-- Alerta de Auto-calibración Tanque Lleno -->
+            <div id="bov-alerta-calibracion" class="hidden bg-emerald-950/80 border border-emerald-500/50 rounded-3xl p-4 space-y-2.5">
+                <div>
+                    <span class="text-[10px] font-extrabold uppercase text-emerald-300">🎯 Rendimiento Real Detectado (Tanque Lleno)</span>
+                    <p id="bov-calibracion-txt" class="text-xs text-white font-bold mt-0.5">Tu Corolla rindió 21.5 km/L reales</p>
+                </div>
+                <button onclick="aplicarCalibracionReal()" class="w-full bg-emerald-500 text-slate-950 font-extrabold text-xs py-2 rounded-xl">
+                    Actualizar rendimiento en toda la app
+                </button>
+            </div>
+
+            <!-- Herramientas de Simulación, CSV y Reinicio -->
+            <section class="bg-slate-900 border border-slate-800 rounded-3xl p-4 space-y-2.5">
+                <span class="block text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Acciones de Control</span>
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="cargarSimulacionSemana()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs py-3 rounded-2xl transition">
+                        ⚡ Simular Semana
+                    </button>
+                    <button onclick="exportarCSV()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold text-xs py-3 rounded-2xl transition">
+                        📥 Exportar CSV
+                    </button>
+                </div>
+                <button onclick="document.getElementById('confirm-reset-all').classList.remove('hidden')" class="w-full bg-red-950/40 hover:bg-red-950/70 text-red-400 border border-red-900/60 font-bold text-xs py-2.5 rounded-2xl transition">
+                    🗑️ Reiniciar Todo a $0.00
+                </button>
+                <div id="confirm-reset-all" class="hidden bg-red-950/90 border border-red-500/50 p-3 rounded-2xl space-y-2">
+                    <p class="text-xs font-bold text-red-200">¿Borrar todos los viajes, recargas, gastos y reiniciar bóvedas?</p>
+                    <div class="flex gap-2">
+                        <button onclick="ejecutarReinicioTotal()" class="flex-1 bg-red-600 text-white font-extrabold text-xs py-2 rounded-xl">Sí, borrar todo</button>
+                        <button onclick="document.getElementById('confirm-reset-all').classList.add('hidden')" class="flex-1 bg-slate-800 text-slate-300 font-bold text-xs py-2 rounded-xl">Cancelar</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Historial Completo con Filtro -->
+            <section class="space-y-2.5">
+                <div class="flex items-center justify-between gap-2">
+                    <h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-400">Historial de Movimientos</h3>
+                    <select id="filtro-historial" onchange="renderizarHistorial()" class="bg-slate-900 border border-slate-700 text-xs font-bold text-slate-200 rounded-xl px-2.5 py-1.5 focus:outline-none">
+                        <option value="todos">Todos</option>
+                        <option value="viaje">Viajes</option>
+                        <option value="gas">Gasolina</option>
+                        <option value="taller">Taller</option>
+                        <option value="personal">Personal</option>
+                    </select>
+                </div>
+                <div id="lista-movimientos" class="space-y-2">
+                    <!-- Llenado por JS -->
+                </div>
+            </section>
+        </main>
+
+        <!-- =========================================================
+             MODAL 1: COBRO DE VIAJE (SENCILLO O REDONDO)
+             ========================================================= -->
+        <div id="modal-cobro" class="hidden fixed inset-0 bg-slate-950/90 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-3">
+            <div class="bg-slate-900 border-2 border-cyan-500/50 w-full max-w-md rounded-3xl p-5 space-y-4 shadow-2xl animate-slide-up">
+                <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                    <div>
+                        <span id="cob-modal-badge" class="text-[10px] font-extrabold uppercase text-cyan-400">Fin de Trayecto con Pasajero</span>
+                        <h3 id="cob-modal-titulo" class="text-lg font-black text-white">Cobrar y Cerrar Tramo</h3>
+                    </div>
+                    <button onclick="cerrarModal('modal-cobro')" class="text-slate-400 hover:text-white p-1.5 text-lg">✕</button>
+                </div>
+
+                <!-- Resumen de distancia medida en tiempo real -->
+                <div class="grid grid-cols-3 gap-2 bg-slate-950 p-3 rounded-2xl border border-slate-800 text-center">
+                    <div>
+                        <span class="block text-[10px] text-slate-400">Acercamiento</span>
+                        <strong id="cob-km-ab" class="text-xs font-mono-num text-amber-300">0.00 km</strong>
+                    </div>
+                    <div>
+                        <span id="cob-lbl-km-efectivo" class="block text-[10px] text-slate-400">Viaje Efectivo</span>
+                        <strong id="cob-km-bc" class="text-sm font-mono-num text-emerald-400">0.00 km</strong>
+                    </div>
+                    <div>
+                        <span class="block text-[10px] text-slate-400">Sugerido</span>
+                        <strong id="cob-sugerido" class="text-sm font-mono-num text-cyan-300">$0.00</strong>
+                    </div>
+                </div>
+
+                <!-- Desglose fórmula viaje redondo (visible solo en modo redondo) -->
+                <div id="cob-detalle-redondo" class="hidden bg-amber-950/30 border border-amber-500/30 rounded-2xl p-2.5 text-[11px] font-mono-num text-amber-200 flex justify-between">
+                    <span id="cob-red-ida">Ida: $0</span>
+                    <span id="cob-red-esp">Espera: $0</span>
+                    <span id="cob-red-reg">Reg 50%: $0</span>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-extrabold text-emerald-400 mb-1">Monto Cobrado ($)</label>
+                        <input type="number" id="cob-input-monto" oninput="actualizarPreviewModalCobro()" class="w-full bg-emerald-950/40 border-2 border-emerald-500 rounded-2xl px-3.5 py-2.5 text-2xl font-mono-num font-black text-white focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 mb-1">Espera Total (min)</label>
+                        <input type="number" id="cob-input-espera" value="0" min="0" oninput="recalcularSugeridoEnModal()" class="w-full bg-slate-950 border border-slate-700 rounded-2xl px-3.5 py-2.5 text-xl font-mono-num font-bold text-white focus:outline-none">
+                    </div>
+                </div>
+
+                <!-- Mini Desglose 4 Bóvedas -->
+                <div class="grid grid-cols-4 gap-1.5 bg-slate-950 p-2.5 rounded-2xl border border-slate-800 text-center text-[11px]">
+                    <div>
+                        <span class="block text-[9px] text-amber-400 font-bold">⛽ Gas</span>
+                        <strong id="cob-prev-gas" class="font-mono-num text-white">$0</strong>
+                    </div>
+                    <div>
+                        <span class="block text-[9px] text-cyan-400 font-bold">🔧 Taller</span>
+                        <strong id="cob-prev-taller" class="font-mono-num text-white">$0</strong>
+                    </div>
+                    <div>
+                        <span class="block text-[9px] text-emerald-400 font-bold">👨‍✈️ Sueldo</span>
+                        <strong id="cob-prev-sueldo" class="font-mono-num text-white">$0</strong>
+                    </div>
+                    <div>
+                        <span class="block text-[9px] text-indigo-400 font-bold">🏦 Crédito</span>
+                        <strong id="cob-prev-util" class="font-mono-num text-indigo-300">$0</strong>
+                    </div>
+                </div>
+
+                <!-- Dos opciones claras al cerrar el cobro -->
+                <div class="space-y-2 pt-1">
+                    <button onclick="confirmarCobroYRegresarBase()" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black py-3.5 px-4 rounded-2xl text-xs transition flex items-center justify-between">
+                        <span>🏠 Cobrar y Regresar Vacío a Base</span>
+                        <span>Sueldo y km regreso →</span>
+                    </button>
+                    <button onclick="confirmarCobroYQuedarseEnZona()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold py-3.5 px-4 rounded-2xl text-xs transition flex items-center justify-between">
+                        <span>📍 Cobrar y Quedarme en Zona</span>
+                        <span>0 km regreso • Esperar viaje</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- =========================================================
+             MODAL 5: CALIBRAR ODÓMETRO MAESTRO DEL COROLLA
+             ========================================================= -->
+        <div id="modal-calibrar-odo" class="hidden fixed inset-0 bg-slate-950/90 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-3">
+            <div class="bg-slate-900 border border-cyan-500/40 w-full max-w-md rounded-3xl p-5 space-y-4 shadow-2xl animate-slide-up">
+                <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                    <h3 class="text-base font-black text-cyan-300">📟 Calibrar Odómetro del Tablero</h3>
+                    <button onclick="cerrarModal('modal-calibrar-odo')" class="text-slate-400 hover:text-white p-1.5 text-lg">✕</button>
+                </div>
+                <p class="text-xs text-slate-300 leading-relaxed">
+                    Escribe el kilometraje exacto que marca el tablero digital de tu <strong>Toyota Corolla 2022</strong>. El escáner OBD2 BLE y el GPS sincronizarán todos los hitos a partir de este valor.
+                </p>
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 mb-1">Odómetro Actual del Corolla (km)</label>
+                    <input type="number" id="cal-odo-input" step="0.1" class="w-full bg-slate-950 border-2 border-cyan-500/60 rounded-2xl px-4 py-3 text-2xl font-mono-num font-black text-white focus:outline-none">
+                </div>
+                <button onclick="guardarCalibracionOdo()" class="w-full bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black py-3.5 rounded-2xl text-xs">
+                    Guardar Odómetro Maestro
+                </button>
+            </div>
+        </div>
+
+        <!-- =========================================================
+             MODAL 4: GASTO DE TALLER / LLANTAS
+             ========================================================= -->
+        <div id="modal-taller" class="hidden fixed inset-0 bg-slate-950/90 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-3">
+            <div class="bg-slate-900 border border-cyan-500/40 w-full max-w-md rounded-3xl p-5 space-y-4 shadow-2xl animate-slide-up">
+                <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                    <h3 class="text-base font-black text-cyan-300">🔧 Registrar Gasto de Taller / Auto</h3>
+                    <button onclick="cerrarModal('modal-taller')" class="text-slate-400 hover:text-white p-1.5 text-lg">✕</button>
+                </div>
+
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 mb-1">Concepto (Llanta, aceite, lavado...)</label>
+                        <input type="text" id="tal-in-concepto" placeholder="Ej. Cambio de aceite sintético" class="w-full bg-slate-950 border border-slate-700 rounded-2xl px-3 py-2.5 text-sm font-semibold text-white">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 mb-1">Monto ($ MXN)</label>
+                        <input type="number" id="tal-in-monto" placeholder="350" class="w-full bg-slate-950 border border-cyan-500/50 rounded-2xl px-3 py-2.5 text-lg font-mono-num font-extrabold text-white">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 mb-1">Descontar de:</label>
+                        <select id="tal-in-caja" class="w-full bg-slate-950 border border-slate-700 rounded-2xl px-3 py-2.5 text-xs font-bold text-white">
+                            <option value="taller">🔧 Caja Taller / Llantas</option>
+                            <option value="utilidad">🏦 Caja Utilidad / Crédito (Gasto mayor)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button onclick="guardarGastoTaller()" class="w-full bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black py-3.5 rounded-2xl text-xs">
+                    Registrar Egreso en Bóveda
+                </button>
+            </div>
+        </div>
+
+        <!-- =========================================================
+             BARRA DE NAVEGACIÓN INFERIOR FIJA (3 PESTAÑAS)
+             ========================================================= -->
+        <nav class="fixed bottom-0 left-0 right-0 max-w-lg mx-auto bg-slate-900/95 backdrop-blur-md border-t border-slate-800 px-3 py-2 z-40">
+            <div class="grid grid-cols-3 gap-2">
+                <button onclick="switchTab('ruta')" id="nav-btn-ruta" class="flex flex-col items-center justify-center py-2 rounded-2xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-extrabold transition">
+                    <span class="text-base leading-none">🧭</span>
+                    <span class="text-[11px] mt-1">En Ruta (1-Toque)</span>
+                </button>
+                <button onclick="switchTab('bovedas')" id="nav-btn-bovedas" class="flex flex-col items-center justify-center py-2 rounded-2xl text-slate-400 hover:text-white border border-transparent font-bold transition">
+                    <span class="text-base leading-none">🏦</span>
+                    <span class="text-[11px] mt-1">Bóvedas ($9k)</span>
+                </button>
+                <button onclick="switchTab('tarifas-ajustes')" id="nav-btn-tarifas-ajustes" class="flex flex-col items-center justify-center py-2 rounded-2xl text-slate-400 hover:text-white border border-transparent font-bold transition">
+                    <span class="text-base leading-none">⚙️</span>
+                    <span class="text-[11px] mt-1">Tarifas y Ajustes</span>
+                </button>
+            </div>
+        </nav>
+
+        <!-- Notificaciones Toast -->
+        <div id="toast-container" class="fixed top-28 left-1/2 -translate-x-1/2 z-50 pointer-events-none w-[90%] max-w-sm"></div>
+
+    </div>
+
+    <script>
+        // ==========================================
+        // 1. CONSTANTES Y ESTADO PERSISTENTE
+        // ==========================================
+        const STORAGE_KEY = 'corolla_hev_1toque_v2';
+
+        const DEFAULT_CONFIG = {
+            metaCredito: 9000,
+            gasolina: 24.00,
+            rendimiento: 20.0,
+            desgaste: 0.90,
+            sueldo: 70.00,
+            tarifaKm: 14.00,
+            viajeMinimo: 60.00,
+            espera: 2.50,
+            velocidadProm: 38
+        };
+
+        const DEFAULT_TARIFAS = [
+            { id: 'r1', nombre: 'Villa Juárez ↔ La Isla del Valle', km: 22, precio: 300 },
+            { id: 'r2', nombre: 'Villa Juárez ↔ Central Culiacán', km: 25, precio: 340 },
+            { id: 'r3', nombre: 'Villa Juárez ↔ Centro Culiacán', km: 28, precio: 360 },
+            { id: 'r4', nombre: 'Villa Juárez ↔ Aeropuerto Cul.', km: 26, precio: 380 }
+        ];
+
+        let state = {
+            config: { ...DEFAULT_CONFIG },
+            tarifas: [...DEFAULT_TARIFAS],
+            odometro: 45200.0,
+            movimientos: [],
+            ciclo: {
+                fase: 'base', // 'base' | 'ab' | 'bc' | 'destino' | 'espera' | 'regreso_cliente' | 'zona' | 'regreso' | 'personal'
+                esRedondo: false,
+                kmAB: 0,
+                kmBC: 0,
+                kmRetCliente: 0,
+                kmCA: 0,
+                kmPersonal: 0,
+                segAB: 0,
+                segBC: 0,
+                segEspera: 0,
+                segRetCliente: 0,
+                segCA: 0,
+                segPersonal: 0,
+                tarifaFijaId: null,
+                // Sellos exactos del odómetro en cada hito
+                odoInicio: null,
+                odoRecogida: null,
+                odoDestino: null,
+                odoFinCliente: null,
+                odoInterceptado: null,
+                odoFinCiclo: null
+            }
+        };
+
+        // Variables de telemetría en vivo
+        let fuenteTelemetria = 'gps'; // 'gps' | 'obd2' | 'sim'
+        let gpsWatchId = null;
+        let ultimaPosGPS = null;
+        let velocidadActualKmh = 0;
+        let rpmActual = 0;
+        let obdEcuOdoBase = null;
+        let intervaloTick = null;
+        let velocidadSimulada = 45;
+
+        // Variables Web Bluetooth OBD2
+        let obdDevice = null;
+        let obdCharacteristic = null;
+        let obdPollingInterval = null;
+
+        // Calibración tanque lleno detectada
+        let calibracionPendiente = null;
+
+        // ==========================================
+        // 2. INICIALIZACIÓN
+        // ==========================================
+        window.onload = function () {
+            cargarEstado();
+            sincronizarInputsConfig();
+            renderizarTarifasUI();
+            iniciarLoopTelemetria();
+            activarFuenteTelemetria('gps', true);
+            recalcularManualRespaldo();
+            actualizarUI();
+        };
+
+        function cargarEstado() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    state = {
+                        ...state,
+                        ...parsed,
+                        config: { ...DEFAULT_CONFIG, ...(parsed.config || {}) },
+                        ciclo: { ...state.ciclo, ...(parsed.ciclo || {}) }
+                    };
+                }
+            } catch (e) {
+                console.error("Error cargando localStorage:", e);
+            }
+        }
+
+        function guardarEstado() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+            } catch (e) {
+                console.error("Error guardando localStorage:", e);
+            }
+        }
+
+        // ==========================================
+        // 3. TELEMETRÍA EN VIVO (GPS + OBD2 BLE + SIM)
+        // ==========================================
+        function activarFuenteTelemetria(fuente, silencioso = false) {
+            fuenteTelemetria = fuente;
+
+            // Actualizar estilos de botones en header
+            const mapBtns = {
+                gps: document.getElementById('src-btn-gps'),
+                obd2: document.getElementById('src-btn-obd2'),
+                sim: document.getElementById('src-btn-sim')
+            };
+            const mapDots = {
+                gps: document.getElementById('dot-gps'),
+                obd2: document.getElementById('dot-obd2'),
+                sim: document.getElementById('dot-sim')
+            };
+
+            Object.keys(mapBtns).forEach(k => {
+                if (k === fuente) {
+                    mapBtns[k].className = 'py-1.5 px-2 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1.5 bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 transition';
+                    mapDots[k].className = 'w-2 h-2 rounded-full bg-emerald-400 animate-pulse';
+                } else {
+                    mapBtns[k].className = 'py-1.5 px-2 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1.5 text-slate-400 hover:text-white border border-transparent transition';
+                    mapDots[k].className = 'w-2 h-2 rounded-full bg-slate-600';
+                }
+            });
+
+            // Mostrar/ocultar barra de simulador
+            const panelSim = document.getElementById('panel-simulador-barra');
+            if (fuente === 'sim') {
+                panelSim.classList.remove('hidden');
+                detenerGPS();
+                velocidadActualKmh = velocidadSimulada;
+                if (!silencioso) mostrarToast('Modo Simulador activo: ajusta la velocidad arriba', 'info');
+            } else if (fuente === 'gps') {
+                panelSim.classList.add('hidden');
+                iniciarGPS();
+                if (!silencioso) mostrarToast('Rastreo GPS en tiempo real activado', 'success');
+            } else if (fuente === 'obd2') {
+                panelSim.classList.add('hidden');
+                detenerGPS();
+            }
+        }
+
+        function iniciarGPS() {
+            if (!('geolocation' in navigator)) {
+                mostrarToast('Tu navegador no soporta GPS; usa Simulador o OBD2', 'error');
+                return;
+            }
+            if (gpsWatchId !== null) return;
+
+            gpsWatchId = navigator.geolocation.watchPosition(
+                (pos) => {
+                    if (fuenteTelemetria !== 'gps') return;
+                    const { latitude, longitude, speed, accuracy } = pos.coords;
+                    // Filtrar lecturas GPS con baja precisión (> 45 metros)
+                    if (accuracy && accuracy > 45) return;
+
+                    if (speed !== null && !isNaN(speed)) {
+                        velocidadActualKmh = Math.max(0, speed * 3.6);
+                    }
+
+                    if (ultimaPosGPS && estaEnMovimientoActivo()) {
+                        const distKm = calcularDistanciaHaversine(
+                            ultimaPosGPS.lat, ultimaPosGPS.lon,
+                            latitude, longitude
+                        );
+                        // Evitar micro-saltos por ruido estacionario (< 5 metros)
+                        if (distKm >= 0.005 && distKm < 2.0) {
+                            sumarDistanciaAlTramoActivo(distKm);
+                        }
+                    }
+                    ultimaPosGPS = { lat: latitude, lon: longitude };
+                },
+                (err) => {
+                    console.warn('GPS warning:', err.message);
+                },
+                { enableHighAccuracy: true, maximumAge: 1000, timeout: 10000 }
+            );
+        }
+
+        function detenerGPS() {
+            if (gpsWatchId !== null) {
+                navigator.geolocation.clearWatch(gpsWatchId);
+                gpsWatchId = null;
+            }
+            ultimaPosGPS = null;
+        }
+
+        // Fórmula Haversine en kilómetros
+        function calcularDistanciaHaversine(lat1, lon1, lat2, lon2) {
+            const R = 6371;
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c;
+        }
+
+        function actualizarVelocidadSimulada() {
+            velocidadSimulada = parseFloat(document.getElementById('sim-velocidad-slider').value) || 0;
+            document.getElementById('sim-velocidad-lbl').textContent = `${velocidadSimulada} km/h`;
+            if (fuenteTelemetria === 'sim') {
+                velocidadActualKmh = velocidadSimulada;
+            }
+        }
+
+        // Loop cada 1 segundo para cronómetro, simulador y avance OBD2
+        function iniciarLoopTelemetria() {
+            if (intervaloTick) clearInterval(intervaloTick);
+            intervaloTick = setInterval(() => {
+                const fase = state.ciclo.fase;
+                const activo = estaEnMovimientoActivo();
+
+                if (activo) {
+                    if (fase === 'ab') state.ciclo.segAB += 1;
+                    else if (fase === 'bc') state.ciclo.segBC += 1;
+                    else if (fase === 'espera') state.ciclo.segEspera += 1;
+                    else if (fase === 'regreso_cliente') state.ciclo.segRetCliente += 1;
+                    else if (fase === 'regreso') state.ciclo.segCA += 1;
+                    else if (fase === 'personal') state.ciclo.segPersonal += 1;
+
+                    // En espera el vehículo no suma km, pero sí cronómetro de espera
+                    if (fase !== 'espera') {
+                        if (fuenteTelemetria === 'sim') {
+                            velocidadActualKmh = velocidadSimulada;
+                            const kmPorSegundo = velocidadSimulada / 3600;
+                            if (kmPorSegundo > 0) {
+                                sumarDistanciaAlTramoActivo(kmPorSegundo);
+                            }
+                        } else if (fuenteTelemetria === 'obd2' && velocidadActualKmh > 0 && obdEcuOdoBase === null) {
+                            const kmPorSegundo = velocidadActualKmh / 3600;
+                            sumarDistanciaAlTramoActivo(kmPorSegundo);
+                        }
+                    }
+                } else {
+                    if (fuenteTelemetria === 'sim') velocidadActualKmh = 0;
+                }
+
+                actualizarTableroVivoUI();
+            }, 1000);
+        }
+
+        function estaEnMovimientoActivo() {
+            return ['ab', 'bc', 'espera', 'regreso_cliente', 'regreso', 'personal'].includes(state.ciclo.fase);
+        }
+
+        function sumarDistanciaAlTramoActivo(km) {
+            const fase = state.ciclo.fase;
+            if (fase === 'ab') state.ciclo.kmAB += km;
+            else if (fase === 'bc') state.ciclo.kmBC += km;
+            else if (fase === 'regreso_cliente') state.ciclo.kmRetCliente += km;
+            else if (fase === 'regreso') state.ciclo.kmCA += km;
+            else if (fase === 'personal') state.ciclo.kmPersonal += km;
+
+            state.odometro += km;
+            guardarEstado();
+        }
+
+        // ==========================================
+        // 4. WEB BLUETOOTH API PARA ESCÁNER OBD2 BLE
+        // ==========================================
+        function abrirModalOBD2() {
+            document.getElementById('modal-obd2').classList.remove('hidden');
+        }
+
+        async function conectarOBD2Bluetooth() {
+            if (!('bluetooth' in navigator)) {
+                mostrarToast('Usa Google Chrome en Android para conectar OBD2 BLE', 'error');
+                return;
+            }
+
+            try {
+                document.getElementById('obd2-status-txt').textContent = 'Buscando adaptador BLE...';
+                // UUIDs estándar de adaptadores OBD2 BLE (Vgate iCar Pro, Veepeak, ELM327 BLE)
+                const device = await navigator.bluetooth.requestDevice({
+                    acceptAllDevices: true,
+                    optionalServices: [
+                        '0000fff0-0000-1000-8000-00805f9b34fb',
+                        '0000ffe0-0000-1000-8000-00805f9b34fb',
+                        'e7810a71-73ae-499d-8c15-faa9aef0c3f2'
+                    ]
+                });
+
+                obdDevice = device;
+                obdDevice.addEventListener('gattserverdisconnected', () => {
+                    document.getElementById('obd2-status-txt').textContent = 'Desconectado';
+                    document.getElementById('lbl-btn-obd2').textContent = 'OBD2 BLE';
+                    document.getElementById('btn-desconectar-obd2').classList.add('hidden');
+                    activarFuenteTelemetria('gps', true);
+                    mostrarToast('Escáner OBD2 desconectado; regresando a GPS', 'info');
+                });
+
+                const server = await device.gatt.connect();
+                const services = await server.getPrimaryServices();
+                for (const service of services) {
+                    const chars = await service.getCharacteristics();
+                    for (const c of chars) {
+                        if (c.properties.write || c.properties.writeWithoutResponse) {
+                            obdCharacteristic = c;
+                        }
+                        if (c.properties.notify) {
+                            await c.startNotifications();
+                            c.addEventListener('characteristicvaluechanged', procesarRespuestaOBD2);
+                        }
+                    }
+                }
+
+                // Inicializar protocolo ELM327 (ATZ, ATE0, ATSP0)
+                await enviarComandoOBD2('ATZ\r');
+                await enviarComandoOBD2('ATE0\r');
+                await enviarComandoOBD2('ATSP0\r');
+
+                // Consultar velocidad (010D), RPM (010C) y odómetro ECU (01A6) en ciclo
+                if (obdPollingInterval) clearInterval(obdPollingInterval);
+                const pids = ['010D\r', '010C\r', '01A6\r'];
+                let pidIdx = 0;
+                obdPollingInterval = setInterval(() => {
+                    if (!obdCharacteristic) return;
+                    enviarComandoOBD2(pids[pidIdx]);
+                    pidIdx = (pidIdx + 1) % pids.length;
+                }, 700);
+
+                document.getElementById('obd2-status-txt').textContent = `Conectado (${device.name || 'OBD2 BLE'})`;
+                document.getElementById('lbl-btn-obd2').textContent = 'OBD2 OK';
+                document.getElementById('btn-desconectar-obd2').classList.remove('hidden');
+                activarFuenteTelemetria('obd2', true);
+                cerrarModal('modal-obd2');
+                mostrarToast(`¡OBD2 conectado: ${device.name || 'Corolla HEV'}!`, 'success');
+            } catch (err) {
+                console.error('Error OBD2 BLE:', err);
+                document.getElementById('obd2-status-txt').textContent = 'No vinculado / Cancelado';
+                mostrarToast('No se pudo vincular el adaptador OBD2', 'error');
+            }
+        }
+
+        async function enviarComandoOBD2(cmd) {
+            if (!obdCharacteristic) return;
+            try {
+                const encoder = new TextEncoder();
+                await obdCharacteristic.writeValue(encoder.encode(cmd));
+            } catch (e) {
+                console.warn('Error enviando PID:', e);
+            }
+        }
+
+        function procesarRespuestaOBD2(event) {
+            const decoder = new TextDecoder();
+            const raw = decoder.decode(event.target.value).replace(/\s+/g, '').toUpperCase();
+            // Respuesta Velocidad: 410DXX (XX en hex = km/h)
+            const matchVel = raw.match(/410D([0-9A-F]{2})/);
+            if (matchVel) {
+                velocidadActualKmh = parseInt(matchVel[1], 16);
+            }
+            // Respuesta RPM: 410CXXYY (((XX*256)+YY)/4)
+            const matchRpm = raw.match(/410C([0-9A-F]{4})/);
+            if (matchRpm) {
+                const val = parseInt(matchRpm[1], 16);
+                rpmActual = Math.round(val / 4);
+            }
+            // Respuesta Odómetro ECU: 41A6AABBCCDD (4 bytes en unidades de 0.1 km)
+            const matchOdo = raw.match(/41A6([0-9A-F]{8})/);
+            if (matchOdo) {
+                const odoEcuKm = parseInt(matchOdo[1], 16) / 10.0;
+                if (odoEcuKm > 0) {
+                    if (obdEcuOdoBase !== null && odoEcuKm > obdEcuOdoBase && estaEnMovimientoActivo()) {
+                        const delta = odoEcuKm - obdEcuOdoBase;
+                        if (delta > 0 && delta < 5) {
+                            sumarDistanciaAlTramoActivo(delta);
+                        }
+                    }
+                    obdEcuOdoBase = odoEcuKm;
+                    state.odometro = odoEcuKm;
+                }
+            }
+        }
+
+        function desconectarOBD2() {
+            if (obdPollingInterval) clearInterval(obdPollingInterval);
+            if (obdDevice && obdDevice.gatt.connected) {
+                obdDevice.gatt.disconnect();
+            }
+            obdDevice = null;
+            obdCharacteristic = null;
+            obdEcuOdoBase = null;
+            activarFuenteTelemetria('gps', true);
+            cerrarModal('modal-obd2');
+        }
+
+        function abrirModalCalibrarOdo() {
+            document.getElementById('cal-odo-input').value = state.odometro.toFixed(1);
+            document.getElementById('modal-calibrar-odo').classList.remove('hidden');
+        }
+
+        function guardarCalibracionOdo() {
+            const val = parseFloat(document.getElementById('cal-odo-input').value);
+            if (isNaN(val) || val < 0) {
+                mostrarToast('Ingresa un kilometraje válido', 'error');
+                return;
+            }
+            state.odometro = val;
+            cerrarModal('modal-calibrar-odo');
+            guardarEstado();
+            actualizarUI();
+            mostrarToast(`Odómetro calibrado a ${val.toFixed(1)} km`, 'success');
+        }
+
+        // ==========================================
+        // 5. FLUJO DE BOTONES DE 1 TOQUE + HITOS ODÓMETRO
+        // ==========================================
+        function crearCicloLimpio(faseInicial) {
+            const odoActual = parseFloat(state.odometro.toFixed(2));
+            return {
+                fase: faseInicial,
+                esRedondo: false,
+                kmAB: 0,
+                kmBC: 0,
+                kmRetCliente: 0,
+                kmCA: 0,
+                kmPersonal: 0,
+                segAB: 0,
+                segBC: 0,
+                segEspera: 0,
+                segRetCliente: 0,
+                segCA: 0,
+                segPersonal: 0,
+                tarifaFijaId: null,
+                odoInicio: odoActual,
+                odoRecogida: null,
+                odoDestino: null,
+                odoFinCliente: null,
+                odoInterceptado: null,
+                odoFinCiclo: null
+            };
+        }
+
+        function accionSalirDeBase() {
+            state.ciclo = crearCicloLimpio('ab');
+            ultimaPosGPS = null;
+            guardarEstado();
+            actualizarUI();
+            mostrarToast(`🚕 Salida Base (Odo ${state.ciclo.odoInicio.toFixed(1)} km) • Yendo por cliente`, 'info');
+        }
+
+        function accionIniciarPersonal() {
+            state.ciclo = crearCicloLimpio('personal');
+            ultimaPosGPS = null;
+            guardarEstado();
+            actualizarUI();
+            mostrarToast(`🟣 Vuelta personal (Odo ${state.ciclo.odoInicio.toFixed(1)} km) • Costo contra sueldo`, 'info');
+        }
+
+        function accionRecogiCliente() {
+            state.ciclo.fase = 'bc';
+            state.ciclo.odoRecogida = parseFloat(state.odometro.toFixed(2));
+            ultimaPosGPS = null;
+            guardarEstado();
+            actualizarUI();
+            mostrarToast(`📍 Cliente a bordo (Odo ${state.ciclo.odoRecogida.toFixed(1)} km) • Midiendo B → C`, 'success');
+        }
+
+        function accionLlegueDestinoCliente() {
+            state.ciclo.fase = 'destino';
+            state.ciclo.odoDestino = parseFloat(state.odometro.toFixed(2));
+            ultimaPosGPS = null;
+            guardarEstado();
+            actualizarUI();
+            mostrarToast(`🏁 Llegaste al destino (Odo ${state.ciclo.odoDestino.toFixed(1)} km)`, 'info');
+        }
+
+        function accionIniciarEsperaRedondo() {
+            state.ciclo.fase = 'espera';
+            state.ciclo.esRedondo = true;
+            guardarEstado();
+            actualizarUI();
+            mostrarToast('⏳ Cronómetro de espera activo ($2.50/min)', 'info');
+        }
+
+        function accionIniciarRegresoConCliente() {
+            state.ciclo.fase = 'regreso_cliente';
+            ultimaPosGPS = null;
+            guardarEstado();
+            actualizarUI();
+            mostrarToast('🔄 Regresando con cliente (aplica 50% tarifa regreso)', 'success');
+        }
+
+        function accionNuevoClienteEnZona() {
+            state.ciclo = crearCicloLimpio('ab');
+            ultimaPosGPS = null;
+            guardarEstado();
+            actualizarUI();
+            mostrarToast(`🚕 Nuevo cliente en zona (Odo ${state.ciclo.odoInicio.toFixed(1)} km)`, 'info');
+        }
+
+        function accionIniciarRegresoBase() {
+            state.ciclo.fase = 'regreso';
+            ultimaPosGPS = null;
+            guardarEstado();
+            actualizarUI();
+            mostrarToast('🏠 Midiendo regreso vacío a Base (sueldo activo)', 'info');
+        }
+
+        // Interceptar servicio mientras vienes regresando vacío a Base
+        function accionInterceptarServicio() {
+            const cfg = state.config;
+            const c = state.ciclo;
+            const odoCorte = parseFloat(state.odometro.toFixed(2));
+
+            // 1. Cerrar en este kilómetro exacto el tramo de regreso muerto anterior
+            if (c.kmCA > 0.01 || c.segCA > 5) {
+                const gas = c.kmCA * (cfg.gasolina / cfg.rendimiento);
+                const taller = c.kmCA * cfg.desgaste;
+                const horas = Math.max(c.segCA / 3600, c.kmCA / cfg.velocidadProm);
+                const sueldo = horas * cfg.sueldo;
+                const utilidad = -(gas + taller + sueldo);
+
+                state.movimientos.unshift({
+                    id: Date.now(),
+                    fecha: obtenerFechaCorta(),
+                    categoria: 'viaje',
+                    titulo: `Regreso Parcial Interceptado (${c.kmCA.toFixed(2)} km)`,
+                    subtitulo: `Odo ${c.odoInicio ? c.odoInicio.toFixed(1) : '-'} → ${odoCorte.toFixed(1)} km • Sueldo cubierto`,
+                    kmTotal: c.kmCA,
+                    segundos: c.segCA,
+                    ingreso: 0,
+                    gas,
+                    taller,
+                    sueldo,
+                    utilidad,
+                    hitosOdo: `Regreso: ${c.odoInicio || '-'} | Interceptado: ${odoCorte}`
+                });
+            }
+
+            // 2. Arrancar de inmediato el acercamiento A->B del nuevo servicio desde odoCorte
+            state.ciclo = crearCicloLimpio('ab');
+            state.ciclo.odoInterceptado = odoCorte;
+            ultimaPosGPS = null;
+            guardarEstado();
+            actualizarUI();
+            mostrarToast(`⚡ ¡Interceptado en Odo ${odoCorte.toFixed(1)} km! Yendo por nuevo cliente`, 'success');
+        }
+
+        function cancelarCicloActivo() {
+            state.ciclo = crearCicloLimpio('base');
+            guardarEstado();
+            actualizarUI();
+            mostrarToast('Salida cancelada • En Base', 'info');
+        }
+
+        function seleccionarTarifaFijaEnRuta(id) {
+            state.ciclo.tarifaFijaId = (state.ciclo.tarifaFijaId === id) ? null : id;
+            guardarEstado();
+            renderizarTarifasUI();
+            const t = state.tarifas.find(x => x.id === state.ciclo.tarifaFijaId);
+            if (t) mostrarToast(`Tarifa fija aplicada: ${t.nombre} ($${t.precio})`, 'success');
+        }
+
+        // Modal de Cobro: Viaje Sencillo vs Viaje Redondo
+        let accionPostCobroPendiente = 'regreso'; // 'regreso' | 'zona'
+
+        function calcularTarifaIdaBase() {
+            const cfg = state.config;
+            const c = state.ciclo;
+            const tarifaFija = state.tarifas.find(t => t.id === c.tarifaFijaId);
+            if (tarifaFija) return tarifaFija.precio;
+            return Math.max(cfg.viajeMinimo, Math.round((c.kmBC * cfg.tarifaKm) / 5) * 5);
+        }
+
+        function abrirModalCobroViajeSencillo(destinoPost) {
+            accionPostCobroPendiente = destinoPost;
+            state.ciclo.esRedondo = false;
+            const c = state.ciclo;
+
+            document.getElementById('cob-modal-badge').textContent = 'Viaje Sencillo (Punto C)';
+            document.getElementById('cob-modal-titulo').textContent = 'Cobrar Viaje Sencillo';
+            document.getElementById('cob-lbl-km-efectivo').textContent = 'Viaje Efectivo';
+            document.getElementById('cob-km-ab').textContent = `${c.kmAB.toFixed(2)} km`;
+            document.getElementById('cob-km-bc').textContent = `${c.kmBC.toFixed(2)} km`;
+            document.getElementById('cob-detalle-redondo').classList.add('hidden');
+            document.getElementById('cob-input-espera').value = 0;
+
+            recalcularSugeridoEnModal();
+            document.getElementById('modal-cobro').classList.remove('hidden');
+        }
+
+        function abrirModalCobroViajeRedondo() {
+            state.ciclo.esRedondo = true;
+            state.ciclo.odoFinCliente = parseFloat(state.odometro.toFixed(2));
+            const c = state.ciclo;
+
+            document.getElementById('cob-modal-badge').textContent = 'Viaje Redondo (Ida + Espera + 50% Regreso)';
+            document.getElementById('cob-modal-titulo').textContent = 'Finalizar Viaje Redondo';
+            document.getElementById('cob-lbl-km-efectivo').textContent = 'Ida + Regreso';
+            document.getElementById('cob-km-ab').textContent = `${c.kmAB.toFixed(2)} km`;
+            document.getElementById('cob-km-bc').textContent = `${(c.kmBC + c.kmRetCliente).toFixed(2)} km`;
+            document.getElementById('cob-detalle-redondo').classList.remove('hidden');
+
+            const minEspera = Math.ceil(c.segEspera / 60);
+            document.getElementById('cob-input-espera').value = minEspera;
+
+            recalcularSugeridoEnModal();
+            document.getElementById('modal-cobro').classList.remove('hidden');
+        }
+
+        function recalcularSugeridoEnModal() {
+            const cfg = state.config;
+            const c = state.ciclo;
+            const esperaMin = Math.max(0, parseFloat(document.getElementById('cob-input-espera').value) || 0);
+            const tarifaIda = calcularTarifaIdaBase();
+            const montoEspera = esperaMin * cfg.espera;
+
+            let sugerido = 0;
+            if (c.esRedondo) {
+                const montoReg50 = Math.round((tarifaIda * 0.50) / 5) * 5;
+                sugerido = Math.round((tarifaIda + montoEspera + montoReg50) / 5) * 5;
+                document.getElementById('cob-red-ida').textContent = `Ida: $${tarifaIda}`;
+                document.getElementById('cob-red-esp').textContent = `Espera: $${montoEspera.toFixed(0)}`;
+                document.getElementById('cob-red-reg').textContent = `Reg 50%: $${montoReg50}`;
+            } else {
+                sugerido = Math.round((tarifaIda + montoEspera) / 5) * 5;
+            }
+
+            document.getElementById('cob-sugerido').textContent = formatoMoneda(sugerido);
+            document.getElementById('cob-input-monto').value = sugerido;
+            actualizarPreviewModalCobro();
+        }
+
+        function actualizarPreviewModalCobro() {
+            const cfg = state.config;
+            const c = state.ciclo;
+            const cobrado = Math.max(0, parseFloat(document.getElementById('cob-input-monto').value) || 0);
+            const esperaMin = Math.max(0, parseFloat(document.getElementById('cob-input-espera').value) || 0);
+
+            const kmEstTotal = c.kmAB + c.kmBC + (c.esRedondo ? c.kmRetCliente : 0);
+            const segTotal = c.segAB + c.segBC + (c.esRedondo ? c.segRetCliente : 0) + (esperaMin * 60);
+            const horas = Math.max(segTotal / 3600, kmEstTotal / cfg.velocidadProm);
+
+            const gas = kmEstTotal * (cfg.gasolina / cfg.rendimiento);
+            const taller = kmEstTotal * cfg.desgaste;
+            const sueldo = horas * cfg.sueldo;
+            const util = cobrado - gas - taller - sueldo;
+
+            document.getElementById('cob-prev-gas').textContent = formatoMoneda(gas, 0);
+            document.getElementById('cob-prev-taller').textContent = formatoMoneda(taller, 0);
+            document.getElementById('cob-prev-sueldo').textContent = formatoMoneda(sueldo, 0);
+            document.getElementById('cob-prev-util').textContent = formatoMoneda(util, 0);
+        }
+
+        function registrarViajeDesdeCiclo(iniciarRegreso) {
+            const cfg = state.config;
+            const c = state.ciclo;
+            const cobrado = parseFloat(document.getElementById('cob-input-monto').value);
+            const esperaMin = Math.max(0, parseFloat(document.getElementById('cob-input-espera').value) || 0);
+
+            if (isNaN(cobrado) || cobrado <= 0) {
+                mostrarToast('Ingresa el monto cobrado al cliente', 'error');
+                return;
+            }
+
+            const odoFin = parseFloat(state.odometro.toFixed(2));
+            const kmEfectivos = c.kmBC + (c.esRedondo ? c.kmRetCliente : 0);
+            const kmTotal = c.kmAB + kmEfectivos;
+            const segTotal = c.segAB + c.segBC + (c.esRedondo ? c.segRetCliente : 0) + (esperaMin * 60);
+            const horas = Math.max(segTotal / 3600, kmTotal / cfg.velocidadProm);
+
+            const gas = kmTotal * (cfg.gasolina / cfg.rendimiento);
+            const taller = kmTotal * cfg.desgaste;
+            const sueldo = horas * cfg.sueldo;
+            const utilidad = cobrado - gas - taller - sueldo;
+
+            const tarifaFija = state.tarifas.find(t => t.id === c.tarifaFijaId);
+            const prefijo = c.esRedondo ? 'Redondo: ' : '';
+            const titulo = prefijo + (tarifaFija ? tarifaFija.nombre : `Servicio (${kmEfectivos.toFixed(1)} km)`);
+
+            const hitosTexto = [
+                c.odoInterceptado ? `Interc:${c.odoInterceptado}` : (c.odoInicio ? `Sal:${c.odoInicio}` : ''),
+                c.odoRecogida ? `Rec:${c.odoRecogida}` : '',
+                c.odoDestino ? `Dest:${c.odoDestino}` : '',
+                `Fin:${odoFin}`
+            ].filter(Boolean).join(' → ');
+
+            state.movimientos.unshift({
+                id: Date.now(),
+                fecha: obtenerFechaCorta(),
+                categoria: 'viaje',
+                titulo,
+                subtitulo: `Odo ${hitosTexto}`,
+                kmTotal,
+                segundos: segTotal,
+                ingreso: cobrado,
+                gas,
+                taller,
+                sueldo,
+                utilidad,
+                hitosOdo: hitosTexto
+            });
+
+            cerrarModal('modal-cobro');
+
+            if (iniciarRegreso) {
+                state.ciclo = crearCicloLimpio('regreso');
+                mostrarToast(`Cobrado ${formatoMoneda(cobrado)} • Midiendo regreso a Base (sueldo activo)`, 'success');
+            } else {
+                state.ciclo = crearCicloLimpio('zona');
+                mostrarToast(`Cobrado ${formatoMoneda(cobrado)} • En zona esperando viaje`, 'success');
+            }
+
+            guardarEstado();
+            actualizarUI();
+        }
+
+        function confirmarCobroYRegresarBase() {
+            registrarViajeDesdeCiclo(true);
+        }
+
+        function confirmarCobroYQuedarseEnZona() {
+            registrarViajeDesdeCiclo(false);
+        }
+
+        function accionLlegueABase() {
+            const cfg = state.config;
+            const c = state.ciclo;
+            const odoLlegada = parseFloat(state.odometro.toFixed(2));
+
+            if (c.fase === 'personal') {
+                const km = c.kmPersonal;
+                if (km > 0.01) {
+                    const gas = km * (cfg.gasolina / cfg.rendimiento);
+                    const taller = km * cfg.desgaste;
+                    const descSueldo = gas + taller;
+
+                    state.movimientos.unshift({
+                        id: Date.now(),
+                        fecha: obtenerFechaCorta(),
+                        categoria: 'personal',
+                        titulo: `Vuelta Personal (${km.toFixed(2)} km)`,
+                        subtitulo: `Odo ${c.odoInicio ? c.odoInicio.toFixed(1) : '-'} → ${odoLlegada.toFixed(1)} km • Descuento a sueldo`,
+                        kmTotal: km,
+                        segundos: c.segPersonal,
+                        ingreso: 0,
+                        gas,
+                        taller,
+                        sueldo: -descSueldo,
+                        utilidad: 0,
+                        hitosOdo: `Sal:${c.odoInicio || '-'} → Base:${odoLlegada}`
+                    });
+                    mostrarToast(`Vuelta personal cerrada (-${formatoMoneda(descSueldo)} de tu sueldo)`, 'info');
+                } else {
+                    mostrarToast('Vuelta personal cerrada sin distancia registrada', 'info');
+                }
+            } else if (c.fase === 'regreso') {
+                const km = c.kmCA;
+                if (km > 0.01 || c.segCA > 5) {
+                    const gas = km * (cfg.gasolina / cfg.rendimiento);
+                    const taller = km * cfg.desgaste;
+                    const horas = Math.max(c.segCA / 3600, km / cfg.velocidadProm);
+                    const sueldo = horas * cfg.sueldo;
+                    const utilidad = -(gas + taller + sueldo);
+
+                    state.movimientos.unshift({
+                        id: Date.now(),
+                        fecha: obtenerFechaCorta(),
+                        categoria: 'viaje',
+                        titulo: `Regreso Vacío a Base (${km.toFixed(2)} km)`,
+                        subtitulo: `Odo ${c.odoInicio ? c.odoInicio.toFixed(1) : '-'} → ${odoLlegada.toFixed(1)} km • Sueldo activo`,
+                        kmTotal: km,
+                        segundos: c.segCA,
+                        ingreso: 0,
+                        gas,
+                        taller,
+                        sueldo,
+                        utilidad,
+                        hitosOdo: `Reg:${c.odoInicio || '-'} → Base:${odoLlegada}`
+                    });
+                    mostrarToast(`Regreso cerrado (${km.toFixed(1)} km) • Bóvedas actualizadas`, 'success');
+                } else {
+                    mostrarToast('Llegada a Base registrada', 'success');
+                }
+            }
+
+            state.ciclo = crearCicloLimpio('base');
+            guardarEstado();
+            actualizarUI();
+        }
+
+        // ==========================================
+        // 6. ACTUALIZACIÓN DE INTERFAZ Y TABLERO VIVO
+        // ==========================================
+        function actualizarTableroVivoUI() {
+            const c = state.ciclo;
+            const fase = c.fase;
+
+            // Odómetro en header
+            document.getElementById('header-odo-total').textContent = `Odo: ${state.odometro.toLocaleString('es-MX', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} km`;
+
+            // Velocidad y dato 2 (OBD2 RPM o Modo Híbrido)
+            document.getElementById('vivo-velocidad').textContent = `${Math.round(velocidadActualKmh)} km/h`;
+            if (fuenteTelemetria === 'obd2') {
+                document.getElementById('vivo-dato2-lbl').textContent = 'Motor RPM';
+                document.getElementById('vivo-dato2-val').textContent = rpmActual === 0 ? 'EV (0 RPM)' : `${rpmActual} RPM`;
+            } else {
+                document.getElementById('vivo-dato2-lbl').textContent = 'Modo HEV';
+                document.getElementById('vivo-dato2-val').textContent = velocidadActualKmh > 0 && velocidadActualKmh <= 45 ? 'EV Eco' : 'Hybrid';
+            }
+
+            // Determinar tramo activo
+            let kmTramo = 0;
+            let segTramo = 0;
+            if (fase === 'ab') { kmTramo = c.kmAB; segTramo = c.segAB; }
+            else if (fase === 'bc') { kmTramo = c.kmBC; segTramo = c.segBC; }
+            else if (fase === 'espera') { kmTramo = 0; segTramo = c.segEspera; }
+            else if (fase === 'regreso_cliente') { kmTramo = c.kmRetCliente; segTramo = c.segRetCliente; }
+            else if (fase === 'regreso') { kmTramo = c.kmCA; segTramo = c.segCA; }
+            else if (fase === 'personal') { kmTramo = c.kmPersonal; segTramo = c.segPersonal; }
+
+            const kmCiclo = c.kmAB + c.kmBC + c.kmRetCliente + c.kmCA + c.kmPersonal;
+
+            document.getElementById('vivo-km-tramo').textContent = kmTramo.toFixed(2);
+            document.getElementById('vivo-cronometro').textContent = formatearCronometro(segTramo);
+            document.getElementById('vivo-km-ciclo').textContent = `${kmCiclo.toFixed(2)} km`;
+
+            // Actualizar reloj de espera en vivo si aplica
+            if (fase === 'espera') {
+                const minE = Math.floor(c.segEspera / 60);
+                const segE = Math.floor(c.segEspera % 60);
+                document.getElementById('vivo-espera-reloj').textContent = `${String(minE).padStart(2, '0')}:${String(segE).padStart(2, '0')}`;
+                const pesosEspera = (c.segEspera / 60) * state.config.espera;
+                document.getElementById('vivo-espera-pesos').textContent = formatoMoneda(pesosEspera);
+            }
+
+            document.getElementById('strip-ab').textContent = c.kmAB.toFixed(2);
+            document.getElementById('strip-bc').textContent = c.kmBC.toFixed(2);
+            if (c.esRedondo) {
+                document.getElementById('strip-ret-lbl').innerHTML = `Reg(50%): <strong class="text-cyan-300">${c.kmRetCliente.toFixed(2)}</strong> km`;
+            } else {
+                document.getElementById('strip-ret-lbl').innerHTML = `C→A: <strong>${c.kmCA.toFixed(2)}</strong> km`;
+            }
+
+            // Sellos de odómetro en vivo
+            const hitosEl = document.getElementById('strip-odos-hitos');
+            if (hitosEl) {
+                const chips = [];
+                if (c.odoInterceptado) chips.push(`⚡Interc: ${c.odoInterceptado.toFixed(1)}`);
+                else if (c.odoInicio) chips.push(`🟢Sal: ${c.odoInicio.toFixed(1)}`);
+                if (c.odoRecogida) chips.push(`📍Rec: ${c.odoRecogida.toFixed(1)}`);
+                if (c.odoDestino) chips.push(`🏁Dest: ${c.odoDestino.toFixed(1)}`);
+                hitosEl.innerHTML = chips.map(ch => `<span>${ch}</span>`).join('');
+            }
+        }
+
+        function actualizarUI() {
+            const c = state.ciclo;
+            const fase = c.fase;
+
+            // Mostrar/Ocultar bloques de botones según fase
+            document.getElementById('controles-fase-base').classList.toggle('hidden', fase !== 'base');
+            document.getElementById('controles-fase-ab').classList.toggle('hidden', fase !== 'ab');
+            document.getElementById('controles-fase-bc').classList.toggle('hidden', fase !== 'bc');
+            document.getElementById('controles-fase-destino').classList.toggle('hidden', fase !== 'destino');
+            document.getElementById('controles-fase-espera').classList.toggle('hidden', fase !== 'espera');
+            document.getElementById('controles-fase-regreso-cliente').classList.toggle('hidden', fase !== 'regreso_cliente');
+            document.getElementById('controles-fase-zona').classList.toggle('hidden', fase !== 'zona');
+            document.getElementById('controles-fase-regreso-personal').classList.toggle('hidden', fase !== 'regreso' && fase !== 'personal');
+
+            // Botón Interceptar visible únicamente cuando vas regresando vacío a Base
+            const btnInterceptar = document.getElementById('btn-interceptar-servicio');
+            if (btnInterceptar) {
+                btnInterceptar.classList.toggle('hidden', fase !== 'regreso');
+            }
+
+            const cardTablero = document.getElementById('tablero-vivo-card');
+            const badge = document.getElementById('fase-badge');
+            const dot = document.getElementById('fase-dot');
+            const texto = document.getElementById('fase-texto');
+            const subtitulo = document.getElementById('vivo-tramo-subtitulo');
+            const strip = document.getElementById('ciclo-tramos-strip');
+
+            strip.classList.toggle('hidden', fase === 'base' || fase === 'personal');
+
+            if (fase === 'base') {
+                cardTablero.className = 'bg-gradient-to-b from-slate-900 to-slate-900/70 border-2 border-slate-800 rounded-3xl p-5 shadow-xl relative overflow-hidden transition-all';
+                badge.className = 'inline-flex items-center gap-2 bg-slate-800 text-slate-300 border border-slate-700 text-xs font-extrabold uppercase tracking-wider px-3 py-1 rounded-full';
+                dot.className = 'w-2 h-2 rounded-full bg-slate-400';
+                texto.textContent = 'EN BASE • LISTO';
+                subtitulo.textContent = 'Distancia del Tramo Actual';
+            } else if (fase === 'ab') {
+                cardTablero.className = 'bg-gradient-to-b from-amber-950/40 to-slate-900 border-2 border-amber-500/50 rounded-3xl p-5 shadow-xl pulse-active transition-all';
+                badge.className = 'inline-flex items-center gap-2 bg-amber-500/20 text-amber-300 border border-amber-500/40 text-xs font-extrabold uppercase tracking-wider px-3 py-1 rounded-full';
+                dot.className = 'w-2 h-2 rounded-full bg-amber-400 animate-ping';
+                texto.textContent = 'YENDO POR CLIENTE (A → B)';
+                subtitulo.textContent = 'Acercamiento al Pasajero';
+            } else if (fase === 'bc') {
+                cardTablero.className = 'bg-gradient-to-b from-emerald-950/50 to-slate-900 border-2 border-emerald-500/60 rounded-3xl p-5 shadow-xl pulse-active transition-all';
+                badge.className = 'inline-flex items-center gap-2 bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs font-extrabold uppercase tracking-wider px-3 py-1 rounded-full';
+                dot.className = 'w-2 h-2 rounded-full bg-emerald-400 animate-ping';
+                texto.textContent = 'CON CLIENTE A BORDO (B → C)';
+                subtitulo.textContent = 'Kilómetros Efectivos del Viaje';
+            } else if (fase === 'destino') {
+                cardTablero.className = 'bg-gradient-to-b from-cyan-950/50 to-slate-900 border-2 border-cyan-500/60 rounded-3xl p-5 shadow-xl transition-all';
+                badge.className = 'inline-flex items-center gap-2 bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 text-xs font-extrabold uppercase tracking-wider px-3 py-1 rounded-full';
+                dot.className = 'w-2 h-2 rounded-full bg-cyan-400';
+                texto.textContent = 'EN DESTINO (PUNTO C)';
+                subtitulo.textContent = 'Selecciona Modalidad de Cierre';
+                const tarifaIda = calcularTarifaIdaBase();
+                document.getElementById('dest-resumen-ida').textContent = `Ida: ${c.kmBC.toFixed(2)} km • Base ida: $${tarifaIda}`;
+                document.getElementById('dest-odo-tag').textContent = `Odo: ${(c.odoDestino || state.odometro).toFixed(1)}`;
+            } else if (fase === 'espera') {
+                cardTablero.className = 'bg-gradient-to-b from-amber-950/50 to-slate-900 border-2 border-amber-400/60 rounded-3xl p-5 shadow-xl pulse-active transition-all';
+                badge.className = 'inline-flex items-center gap-2 bg-amber-500/20 text-amber-300 border border-amber-500/40 text-xs font-extrabold uppercase tracking-wider px-3 py-1 rounded-full';
+                dot.className = 'w-2 h-2 rounded-full bg-amber-400 animate-ping';
+                texto.textContent = 'ESPERANDO CLIENTE (REDONDO)';
+                subtitulo.textContent = 'Vehículo Detenido en Espera';
+            } else if (fase === 'regreso_cliente') {
+                cardTablero.className = 'bg-gradient-to-b from-teal-950/50 to-slate-900 border-2 border-teal-400/60 rounded-3xl p-5 shadow-xl pulse-active transition-all';
+                badge.className = 'inline-flex items-center gap-2 bg-teal-500/20 text-teal-300 border border-teal-500/40 text-xs font-extrabold uppercase tracking-wider px-3 py-1 rounded-full';
+                dot.className = 'w-2 h-2 rounded-full bg-teal-400 animate-ping';
+                texto.textContent = 'REGRESANDO CON CLIENTE (50%)';
+                subtitulo.textContent = 'Trayecto de Vuelta Viaje Redondo';
+            } else if (fase === 'zona') {
+                cardTablero.className = 'bg-gradient-to-b from-indigo-950/40 to-slate-900 border-2 border-indigo-500/50 rounded-3xl p-5 shadow-xl transition-all';
+                badge.className = 'inline-flex items-center gap-2 bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 text-xs font-extrabold uppercase tracking-wider px-3 py-1 rounded-full';
+                dot.className = 'w-2 h-2 rounded-full bg-indigo-400';
+                texto.textContent = 'EN ZONA • PAUSADO';
+                subtitulo.textContent = 'Esperando Siguiente Acción';
+            } else if (fase === 'regreso') {
+                cardTablero.className = 'bg-gradient-to-b from-cyan-950/40 to-slate-900 border-2 border-cyan-500/50 rounded-3xl p-5 shadow-xl pulse-active transition-all';
+                badge.className = 'inline-flex items-center gap-2 bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 text-xs font-extrabold uppercase tracking-wider px-3 py-1 rounded-full';
+                dot.className = 'w-2 h-2 rounded-full bg-cyan-400 animate-ping';
+                texto.textContent = 'REGRESO VACÍO A BASE (C → A)';
+                subtitulo.textContent = 'Kilómetros de Retorno a Casa';
+                document.getElementById('lbl-sub-llegue-base').textContent = 'Cierra los km de regreso y suma tu sueldo a Bóvedas';
+            } else if (fase === 'personal') {
+                cardTablero.className = 'bg-gradient-to-b from-purple-950/50 to-slate-900 border-2 border-purple-500/60 rounded-3xl p-5 shadow-xl pulse-active transition-all';
+                badge.className = 'inline-flex items-center gap-2 bg-purple-500/20 text-purple-300 border border-purple-500/40 text-xs font-extrabold uppercase tracking-wider px-3 py-1 rounded-full';
+                dot.className = 'w-2 h-2 rounded-full bg-purple-400 animate-ping';
+                texto.textContent = 'VUELTA PERSONAL EN CURSO';
+                subtitulo.textContent = 'Kilómetros Personales (Descuento a Sueldo)';
+                document.getElementById('lbl-sub-llegue-base').textContent = 'Transfiere costo puro de tu sueldo a Gasolina y Taller';
+            }
+
+            actualizarTableroVivoUI();
+            actualizarBovedasUI();
+            renderizarHistorial();
+        }
+
+        // ==========================================
+        // 7. CÁLCULO DE LAS 4 BÓVEDAS VIVAS
+        // ==========================================
+        function calcularSaldosBovedas() {
+            let saldoGas = 0;
+            let saldoTaller = 0;
+            let saldoSueldo = 0;
+            let sueldoBruto = 0;
+            let descPersonal = 0;
+            let saldoUtilidad = 0;
+            let totalCobrado = 0;
+
+            state.movimientos.forEach(m => {
+                if (m.categoria === 'viaje') {
+                    saldoGas += m.gas;
+                    saldoTaller += m.taller;
+                    saldoSueldo += m.sueldo;
+                    sueldoBruto += m.sueldo;
+                    saldoUtilidad += m.utilidad;
+                    totalCobrado += m.ingreso;
+                } else if (m.categoria === 'personal') {
+                    saldoGas += m.gas;
+                    saldoTaller += m.taller;
+                    saldoSueldo += m.sueldo; // es negativo
+                    descPersonal += Math.abs(m.sueldo);
+                } else if (m.categoria === 'gas') {
+                    saldoGas -= m.ingreso;
+                } else if (m.categoria === 'taller') {
+                    if (m.caja === 'utilidad') saldoUtilidad -= m.ingreso;
+                    else saldoTaller -= m.ingreso;
+                }
+            });
+
+            return {
+                saldoGas,
+                saldoTaller,
+                saldoSueldo,
+                sueldoBruto,
+                descPersonal,
+                saldoUtilidad,
+                totalCobrado,
+                totalCajas: saldoGas + saldoTaller + saldoSueldo + saldoUtilidad
+            };
+        }
+
+        function actualizarBovedasUI() {
+            const b = calcularSaldosBovedas();
+            const cfg = state.config;
+            const meta = Math.max(1, cfg.metaCredito);
+            const pct = Math.min(100, Math.max(0, (b.saldoUtilidad / meta) * 100));
+            const faltante = Math.max(0, meta - b.saldoUtilidad);
+
+            // Header badge
+            document.getElementById('header-credito-progreso').textContent = `${formatoMoneda(b.saldoUtilidad, 0)} / ${formatoMoneda(meta, 0)}`;
+
+            // Meta Crédito Card
+            document.getElementById('bov-credito-actual').textContent = formatoMoneda(b.saldoUtilidad);
+            document.getElementById('bov-credito-meta').textContent = formatoMoneda(meta, 0);
+            document.getElementById('bov-credito-pct').textContent = `${pct.toFixed(0)}%`;
+            document.getElementById('bov-credito-barra').style.width = `${pct}%`;
+            document.getElementById('bov-credito-faltante').innerHTML = faltante === 0
+                ? `<strong class="text-emerald-400">¡Meta mensual del crédito cubierta!</strong>`
+                : `Faltan <strong>${formatoMoneda(faltante)}</strong> para la letra`;
+            document.getElementById('bov-efectivo-total').textContent = `Total cajas: ${formatoMoneda(b.totalCajas, 0)}`;
+
+            // 4 Cajas
+            const elGas = document.getElementById('bov-gas-saldo');
+            elGas.textContent = formatoMoneda(b.saldoGas);
+            elGas.className = `text-xl font-mono-num font-black mt-0.5 ${b.saldoGas < 0 ? 'text-red-400' : 'text-amber-400'}`;
+            document.getElementById('bov-gas-sub').textContent = `Rend: ${cfg.rendimiento.toFixed(1)} km/L ($${(cfg.gasolina / cfg.rendimiento).toFixed(2)}/km)`;
+
+            const elTal = document.getElementById('bov-taller-saldo');
+            elTal.textContent = formatoMoneda(b.saldoTaller);
+            elTal.className = `text-xl font-mono-num font-black mt-0.5 ${b.saldoTaller < 0 ? 'text-red-400' : 'text-cyan-400'}`;
+            document.getElementById('bov-taller-sub').textContent = `Reserva $${cfg.desgaste.toFixed(2)}/km`;
+
+            const elSue = document.getElementById('bov-sueldo-saldo');
+            elSue.textContent = formatoMoneda(b.saldoSueldo);
+            elSue.className = `text-xl font-mono-num font-black mt-0.5 ${b.saldoSueldo < 0 ? 'text-red-400' : 'text-emerald-400'}`;
+            document.getElementById('bov-sueldo-sub').textContent = `Bruto: ${formatoMoneda(b.sueldoBruto, 0)} • Pers: -${formatoMoneda(b.descPersonal, 0)}`;
+
+            const elUtil = document.getElementById('bov-util-saldo');
+            elUtil.textContent = formatoMoneda(b.saldoUtilidad);
+            elUtil.className = `text-xl font-mono-num font-black mt-0.5 ${b.saldoUtilidad < 0 ? 'text-red-400' : 'text-indigo-400'}`;
+            document.getElementById('bov-util-sub').textContent = `Ingresos totales: ${formatoMoneda(b.totalCobrado, 0)}`;
+        }
+
+        // ==========================================
+        // 8. GASOLINA, TALLER Y RESPALDO MANUAL
+        // ==========================================
+        function abrirModalGasolina() {
+            document.getElementById('gas-in-odo').value = Math.round(state.odometro);
+            document.getElementById('gas-in-monto').value = '';
+            document.getElementById('gas-in-litros').value = '';
+            document.getElementById('modal-gasolina').classList.remove('hidden');
+        }
+
+        function autoCalcLitrosModal() {
+            const m = parseFloat(document.getElementById('gas-in-monto').value);
+            if (!isNaN(m) && m > 0 && state.config.gasolina > 0) {
+                document.getElementById('gas-in-litros').value = (m / state.config.gasolina).toFixed(2);
+            }
+        }
+
+        function guardarRecargaGasolina() {
+            const monto = parseFloat(document.getElementById('gas-in-monto').value);
+            const litros = parseFloat(document.getElementById('gas-in-litros').value);
+            const odo = parseFloat(document.getElementById('gas-in-odo').value);
+            const lleno = document.getElementById('gas-in-lleno').checked;
+
+            if (isNaN(monto) || monto <= 0 || isNaN(litros) || litros <= 0 || isNaN(odo) || odo <= 0) {
+                mostrarToast('Completa monto, litros y odómetro', 'error');
+                return;
+            }
+
+            if (lleno) {
+                const prevLleno = state.movimientos.find(m => m.categoria === 'gas' && m.tanqueLleno && m.odo < odo);
+                if (prevLleno) {
+                    const kmRec = odo - prevLleno.odo;
+                    const rendReal = kmRec / litros;
+                    const precioL = monto / litros;
+                    if (rendReal > 5 && rendReal < 45) {
+                        calibracionPendiente = {
+                            rendimiento: parseFloat(rendReal.toFixed(2)),
+                            gasolina: parseFloat(precioL.toFixed(2))
+                        };
+                        document.getElementById('bov-alerta-calibracion').classList.remove('hidden');
+                        document.getElementById('bov-calibracion-txt').textContent = `Recorriste ${kmRec.toFixed(0)} km con ${litros.toFixed(2)} L = ${rendReal.toFixed(2)} km/L reales`;
+                    }
+                }
+            }
+
+            state.movimientos.unshift({
+                id: Date.now(),
+                fecha: obtenerFechaCorta(),
+                categoria: 'gas',
+                titulo: `Recarga Gasolina (${litros.toFixed(2)} L)`,
+                subtitulo: `Odo: ${odo} km ${lleno ? '• Tanque Lleno' : ''}`,
+                kmTotal: 0,
+                ingreso: monto,
+                litros,
+                odo,
+                tanqueLleno: lleno
+            });
+
+            if (odo > state.odometro) state.odometro = odo;
+            cerrarModal('modal-gasolina');
+            guardarEstado();
+            actualizarUI();
+            mostrarToast(`Ticket de ${formatoMoneda(monto)} descontado de Caja Gasolina`, 'success');
+        }
+
+        function aplicarCalibracionReal() {
+            if (!calibracionPendiente) return;
+            state.config.rendimiento = calibracionPendiente.rendimiento;
+            state.config.gasolina = calibracionPendiente.gasolina;
+            sincronizarInputsConfig();
+            document.getElementById('bov-alerta-calibracion').classList.add('hidden');
+            guardarEstado();
+            actualizarUI();
+            mostrarToast(`App calibrada a ${state.config.rendimiento} km/L reales`, 'success');
+        }
+
+        function abrirModalTaller() {
+            document.getElementById('tal-in-concepto').value = '';
+            document.getElementById('tal-in-monto').value = '';
+            document.getElementById('modal-taller').classList.remove('hidden');
+        }
+
+        function guardarGastoTaller() {
+            const concepto = document.getElementById('tal-in-concepto').value.trim();
+            const monto = parseFloat(document.getElementById('tal-in-monto').value);
+            const caja = document.getElementById('tal-in-caja').value;
+
+            if (!concepto || isNaN(monto) || monto <= 0) {
+                mostrarToast('Ingresa concepto y monto del gasto', 'error');
+                return;
+            }
+
+            state.movimientos.unshift({
+                id: Date.now(),
+                fecha: obtenerFechaCorta(),
+                categoria: 'taller',
+                titulo: concepto,
+                subtitulo: `Egreso de ${caja === 'utilidad' ? 'Caja Crédito' : 'Caja Taller'}`,
+                kmTotal: 0,
+                ingreso: monto,
+                caja
+            });
+
+            cerrarModal('modal-taller');
+            guardarEstado();
+            actualizarUI();
+            mostrarToast(`Gasto de ${formatoMoneda(monto)} descontado`, 'success');
+        }
+
+        // Captura Manual de Respaldo
+        function toggleRespaldoManual() {
+            const p = document.getElementById('panel-respaldo-manual');
+            const ic = document.getElementById('icono-respaldo-manual');
+            p.classList.toggle('hidden');
+            ic.textContent = p.classList.contains('hidden') ? '▼' : '▲';
+        }
+
+        function recalcularManualRespaldo() {
+            const cfg = state.config;
+            const kmBC = Math.max(0, parseFloat(document.getElementById('man-km-bc').value) || 0);
+            const espera = Math.max(0, parseFloat(document.getElementById('man-espera').value) || 0);
+            const tarifaFija = state.tarifas.find(t => t.km === kmBC);
+            const sug = tarifaFija
+                ? tarifaFija.precio + (espera * cfg.espera)
+                : Math.max(cfg.viajeMinimo, Math.round(((kmBC * cfg.tarifaKm) + (espera * cfg.espera)) / 5) * 5);
+            document.getElementById('man-cobrado').value = sug;
+        }
+
+        function guardarViajeManualRespaldo() {
+            const cfg = state.config;
+            const kmAB = Math.max(0, parseFloat(document.getElementById('man-km-ab').value) || 0);
+            const kmBC = Math.max(0, parseFloat(document.getElementById('man-km-bc').value) || 0);
+            const kmCA = Math.max(0, parseFloat(document.getElementById('man-km-ca').value) || 0);
+            const espera = Math.max(0, parseFloat(document.getElementById('man-espera').value) || 0);
+            const cobrado = parseFloat(document.getElementById('man-cobrado').value);
+
+            if (isNaN(cobrado) || cobrado <= 0) {
+                mostrarToast('Ingresa el monto cobrado', 'error');
+                return;
+            }
+
+            const kmTotal = kmAB + kmBC + kmCA;
+            const horas = (kmTotal / cfg.velocidadProm) + (espera / 60);
+            const gas = kmTotal * (cfg.gasolina / cfg.rendimiento);
+            const taller = kmTotal * cfg.desgaste;
+            const sueldo = horas * cfg.sueldo;
+            const utilidad = cobrado - gas - taller - sueldo;
+
+            state.movimientos.unshift({
+                id: Date.now(),
+                fecha: obtenerFechaCorta(),
+                categoria: 'viaje',
+                titulo: `Viaje Manual (${kmBC} km)`,
+                subtitulo: `Total ciclo: ${kmTotal.toFixed(1)} km`,
+                kmTotal,
+                segundos: horas * 3600,
+                ingreso: cobrado,
+                gas,
+                taller,
+                sueldo,
+                utilidad
+            });
+
+            state.odometro += kmTotal;
+            guardarEstado();
+            actualizarUI();
+            mostrarToast(`Viaje manual guardado (+${formatoMoneda(utilidad)} a Crédito)`, 'success');
+        }
+
+        function guardarPersonalManualRespaldo() {
+            const cfg = state.config;
+            const km = Math.max(0, parseFloat(document.getElementById('man-km-bc').value) || 0);
+            if (km <= 0) {
+                mostrarToast('Ingresa los km personales en el campo Km B→C', 'error');
+                return;
+            }
+            const gas = km * (cfg.gasolina / cfg.rendimiento);
+            const taller = km * cfg.desgaste;
+            const desc = gas + taller;
+
+            state.movimientos.unshift({
+                id: Date.now(),
+                fecha: obtenerFechaCorta(),
+                categoria: 'personal',
+                titulo: `Vuelta Personal Manual (${km} km)`,
+                subtitulo: `Descuento a sueldo → Gasolina y Taller`,
+                kmTotal: km,
+                ingreso: 0,
+                gas,
+                taller,
+                sueldo: -desc,
+                utilidad: 0
+            });
+
+            state.odometro += km;
+            guardarEstado();
+            actualizarUI();
+            mostrarToast(`Uso personal registrado (-${formatoMoneda(desc)} a sueldo)`, 'info');
+        }
+
+        // ==========================================
+        // 9. HISTORIAL, SIMULACIÓN Y CSV
+        // ==========================================
+        function renderizarHistorial() {
+            const filtro = document.getElementById('filtro-historial').value;
+            const cont = document.getElementById('lista-movimientos');
+            const filtrados = state.movimientos.filter(m => filtro === 'todos' || m.categoria === filtro);
+
+            if (filtrados.length === 0) {
+                cont.innerHTML = `<div class="bg-slate-900/60 border border-dashed border-slate-800 rounded-2xl p-6 text-center text-xs text-slate-500">Sin movimientos en esta categoría.</div>`;
+                return;
+            }
+
+            cont.innerHTML = filtrados.map(m => {
+                let badge = '';
+                let montoTxt = '';
+                if (m.categoria === 'viaje') {
+                    badge = `<span class="text-[9px] font-extrabold bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded">VIAJE</span>`;
+                    montoTxt = `<span class="text-xs font-mono-num font-black text-emerald-400">+${formatoMoneda(m.ingreso)}</span>`;
+                } else if (m.categoria === 'gas') {
+                    badge = `<span class="text-[9px] font-extrabold bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded">GASOLINA</span>`;
+                    montoTxt = `<span class="text-xs font-mono-num font-black text-amber-400">-${formatoMoneda(m.ingreso)}</span>`;
+                } else if (m.categoria === 'taller') {
+                    badge = `<span class="text-[9px] font-extrabold bg-cyan-500/20 text-cyan-300 px-2 py-0.5 rounded">TALLER</span>`;
+                    montoTxt = `<span class="text-xs font-mono-num font-black text-cyan-400">-${formatoMoneda(m.ingreso)}</span>`;
+                } else {
+                    badge = `<span class="text-[9px] font-extrabold bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded">PERSONAL</span>`;
+                    montoTxt = `<span class="text-xs font-mono-num font-black text-purple-400">${formatoMoneda(m.sueldo)}</span>`;
+                }
+
+                return `
+                    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 flex items-center justify-between gap-2">
+                        <div class="min-w-0">
+                            <div class="flex items-center gap-1.5">
+                                ${badge}
+                                <strong class="text-xs text-white truncate">${m.titulo}</strong>
+                            </div>
+                            <p class="text-[11px] text-slate-400 mt-1">${m.subtitulo} • ${m.fecha}</p>
+                        </div>
+                        <div class="flex items-center gap-2 shrink-0">
+                            ${montoTxt}
+                            <button onclick="eliminarMovimiento(${m.id})" class="text-slate-600 hover:text-red-400 p-1 text-xs" title="Eliminar">✕</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function eliminarMovimiento(id) {
+            state.movimientos = state.movimientos.filter(m => m.id !== id);
+            guardarEstado();
+            actualizarUI();
+            mostrarToast('Movimiento eliminado y bóvedas recalculadas', 'info');
+        }
+
+        function cargarSimulacionSemana() {
+            const cfg = state.config;
+            const gasKm = cfg.gasolina / cfg.rendimiento;
+            const now = Date.now();
+
+            const mkViaje = (off, titulo, kmAB, kmBC, kmCA, cobrado) => {
+                const kmTotal = kmAB + kmBC + kmCA;
+                const horas = kmTotal / cfg.velocidadProm;
+                const gas = kmTotal * gasKm;
+                const taller = kmTotal * cfg.desgaste;
+                const sueldo = horas * cfg.sueldo;
+                const utilidad = cobrado - gas - taller - sueldo;
+                return {
+                    id: now - off,
+                    fecha: 'Simulación',
+                    categoria: 'viaje',
+                    titulo,
+                    subtitulo: `A→B: ${kmAB}k • B→C: ${kmBC}k • C→A: ${kmCA}k`,
+                    kmTotal,
+                    segundos: horas * 3600,
+                    ingreso: cobrado,
+                    gas, taller, sueldo, utilidad
+                };
+            };
+
+            state.movimientos = [
+                mkViaje(1000, 'Villa Juárez ↔ La Isla del Valle', 2, 22, 22, 300),
+                mkViaje(2000, 'Central Culiacán → Villa Juárez (Regreso)', 1, 25, 0, 340),
+                mkViaje(3000, 'Villa Juárez ↔ Aeropuerto Cul.', 2, 26, 26, 360),
+                mkViaje(4000, 'Villa Juárez ↔ Centro Culiacán', 2, 28, 28, 380),
+                mkViaje(5000, 'La Isla → Villa Juárez (Regreso)', 0, 22, 0, 300),
+                {
+                    id: now - 2500,
+                    fecha: 'Simulación',
+                    categoria: 'gas',
+                    titulo: 'Recarga Gasolina (14.58 L)',
+                    subtitulo: 'Odo: 45410 km • Tanque Lleno',
+                    kmTotal: 0,
+                    ingreso: 350,
+                    litros: 14.58,
+                    odo: 45410,
+                    tanqueLleno: true
+                },
+                {
+                    id: now - 3500,
+                    fecha: 'Simulación',
+                    categoria: 'taller',
+                    titulo: 'Lavado carrocería e interiores',
+                    subtitulo: 'Egreso de Caja Taller',
+                    kmTotal: 0,
+                    ingreso: 120,
+                    caja: 'taller'
+                },
+                {
+                    id: now - 1500,
+                    fecha: 'Simulación',
+                    categoria: 'personal',
+                    titulo: 'Vuelta Personal (12.0 km)',
+                    subtitulo: 'Descuento a sueldo → Cajas Gas y Taller',
+                    kmTotal: 12,
+                    ingreso: 0,
+                    gas: 12 * gasKm,
+                    taller: 12 * cfg.desgaste,
+                    sueldo: -(12 * (gasKm + cfg.desgaste)),
+                    utilidad: 0
+                }
+            ];
+
+            state.odometro = 45435.0;
+            guardarEstado();
+            actualizarUI();
+            mostrarToast('⚡ Semana de simulación cargada en tus Bóvedas', 'success');
+        }
+
+        function ejecutarReinicioTotal() {
+            state.movimientos = [];
+            state.ciclo = {
+                fase: 'base',
+                kmAB: 0, kmBC: 0, kmCA: 0, kmPersonal: 0,
+                segAB: 0, segBC: 0, segCA: 0, segPersonal: 0,
+                tarifaFijaId: null
+            };
+            document.getElementById('confirm-reset-all').classList.add('hidden');
+            guardarEstado();
+            actualizarUI();
+            mostrarToast('Bóvedas e historial reiniciados a $0.00', 'info');
+        }
+
+        function exportarCSV() {
+            let csv = 'Fecha,Categoria,Detalle,Hitos_Odometro,Km,Ingreso,Gasolina,Taller,Sueldo,Utilidad_Credito\n';
+            state.movimientos.forEach(m => {
+                csv += `"${m.fecha}","${m.categoria}","${m.titulo}","${m.hitosOdo || ''}",${(m.kmTotal || 0).toFixed(2)},${(m.ingreso || 0).toFixed(2)},${(m.gas || 0).toFixed(2)},${(m.taller || 0).toFixed(2)},${(m.sueldo || 0).toFixed(2)},${(m.utilidad || 0).toFixed(2)}\n`;
+            });
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Corolla_HEV_Flotilla_${new Date().toISOString().slice(0, 10)}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            mostrarToast('Archivo CSV descargado con hitos de odómetro', 'success');
+        }
+
+        // ==========================================
+        // 10. TARIFAS FIJAS Y AJUSTES
+        // ==========================================
+        function renderizarTarifasUI() {
+            // Pills en pantalla En Ruta (cuando vas con cliente B->C)
+            const pills = document.getElementById('ruta-pills-tarifas');
+            pills.innerHTML = state.tarifas.map(t => {
+                const act = state.ciclo.tarifaFijaId === t.id;
+                return `
+                    <button onclick="seleccionarTarifaFijaEnRuta('${t.id}')" class="px-3 py-1.5 rounded-xl text-[11px] font-extrabold whitespace-nowrap shrink-0 border transition ${act ? 'bg-emerald-500 text-slate-950 border-emerald-400' : 'bg-slate-950 text-slate-300 border-slate-700 hover:border-slate-500'}">
+                        ${t.nombre.replace('Villa Juárez ↔ ', '')} • $${t.precio}
+                    </button>
+                `;
+            }).join('');
+
+            // Lista editable en pestaña Tarifas y Ajustes
+            const lista = document.getElementById('lista-tarifas-ajustes');
+            lista.innerHTML = state.tarifas.map(t => `
+                <div class="bg-slate-950 border border-slate-800 rounded-2xl p-3 flex items-center justify-between gap-2">
+                    <div class="min-w-0">
+                        <p class="text-xs font-extrabold text-white truncate">${t.nombre}</p>
+                        <span class="text-[11px] text-slate-400">${t.km} km efectivos (B → C)</span>
+                    </div>
+                    <div class="flex items-center gap-2 shrink-0">
+                        <span class="text-sm font-mono-num font-black text-emerald-400">$${t.precio}</span>
+        function ejecutarReinicioTotal() {
+            state.movimientos = [];
+            state.ciclo = crearCicloLimpio('base');
+            document.getElementById('confirm-reset-all').classList.add('hidden');
+            guardarEstado();
+            actualizarUI();
+            mostrarToast('Bóvedas e historial reiniciados a $0.00', 'info');
+        }
+
+        function agregarTarifaFija() {
+            const nombre = document.getElementById('new-ruta-nombre').value.trim();
+            const km = parseFloat(document.getElementById('new-ruta-km').value);
+            const precio = parseFloat(document.getElementById('new-ruta-precio').value);
+
+            if (!nombre || isNaN(km) || km <= 0 || isNaN(precio) || precio <= 0) {
+                mostrarToast('Completa nombre, km y precio de la ruta', 'error');
+                return;
+            }
+
+            state.tarifas.push({ id: 'r_' + Date.now(), nombre, km, precio });
+            document.getElementById('new-ruta-nombre').value = '';
+            document.getElementById('new-ruta-km').value = '';
+            document.getElementById('new-ruta-precio').value = '';
+            document.getElementById('form-add-tarifa').classList.add('hidden');
+            guardarEstado();
+            renderizarTarifasUI();
+            mostrarToast('Ruta fija agregada', 'success');
+        }
+
+        function eliminarTarifaFija(id) {
+            state.tarifas = state.tarifas.filter(t => t.id !== id);
+            if (state.ciclo.tarifaFijaId === id) state.ciclo.tarifaFijaId = null;
+            guardarEstado();
+            renderizarTarifasUI();
+            mostrarToast('Ruta eliminada', 'info');
+        }
+
+        function aplicarTarifaDesdeAjustes(id) {
+            state.ciclo.tarifaFijaId = id;
+            const t = state.tarifas.find(x => x.id === id);
+            if (t) {
+                document.getElementById('man-km-bc').value = t.km;
+                document.getElementById('man-km-ca').value = t.km;
+                recalcularManualRespaldo();
+            }
+            guardarEstado();
+            renderizarTarifasUI();
+            switchTab('ruta');
+            mostrarToast(`Tarifa fija "${t.nombre}" lista para el viaje`, 'success');
+        }
+
+        function sincronizarInputsConfig() {
+            const c = state.config;
+            document.getElementById('cfg-meta').value = c.metaCredito;
+            document.getElementById('cfg-gas').value = c.gasolina;
+            document.getElementById('cfg-rend').value = c.rendimiento;
+            document.getElementById('cfg-desgaste').value = c.desgaste;
+            document.getElementById('cfg-sueldo').value = c.sueldo;
+            document.getElementById('cfg-tarifa-km').value = c.tarifaKm;
+            document.getElementById('cfg-minimo').value = c.viajeMinimo;
+            document.getElementById('cfg-espera').value = c.espera;
+
+            const gasKm = c.gasolina / c.rendimiento;
+            document.getElementById('cfg-res-gas').textContent = `$${gasKm.toFixed(2)} / km`;
+            document.getElementById('cfg-res-puro').textContent = `$${(gasKm + c.desgaste).toFixed(2)} / km`;
+        }
+
+        function guardarConfiguracion() {
+            state.config = {
+                ...state.config,
+                metaCredito: Math.max(100, parseFloat(document.getElementById('cfg-meta').value) || 9000),
+                gasolina: Math.max(1, parseFloat(document.getElementById('cfg-gas').value) || 24),
+                rendimiento: Math.max(1, parseFloat(document.getElementById('cfg-rend').value) || 20),
+                desgaste: Math.max(0, parseFloat(document.getElementById('cfg-desgaste').value) || 0.9),
+                sueldo: Math.max(0, parseFloat(document.getElementById('cfg-sueldo').value) || 70),
+                tarifaKm: Math.max(1, parseFloat(document.getElementById('cfg-tarifa-km').value) || 14),
+                viajeMinimo: Math.max(0, parseFloat(document.getElementById('cfg-minimo').value) || 60),
+                espera: Math.max(0, parseFloat(document.getElementById('cfg-espera').value) || 2.5)
+            };
+            sincronizarInputsConfig();
+            guardarEstado();
+            actualizarUI();
+            mostrarToast('Parámetros actualizados', 'success');
+        }
+
+        function restaurarConfigDefault() {
+            state.config = { ...DEFAULT_CONFIG };
+            sincronizarInputsConfig();
+            guardarEstado();
+            actualizarUI();
+            mostrarToast('Parámetros restaurados', 'info');
+        }
+
+        // ==========================================
+        // 11. NAVEGACIÓN Y UTILIDADES
+        // ==========================================
+        function switchTab(tab) {
+            const views = ['ruta', 'bovedas', 'tarifas-ajustes'];
+            views.forEach(v => {
+                const elView = document.getElementById('view-' + v);
+                const elBtn = document.getElementById('nav-btn-' + v);
+                if (v === tab) {
+                    elView.classList.remove('hidden');
+                    elBtn.className = 'flex flex-col items-center justify-center py-2 rounded-2xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-extrabold transition';
+                } else {
+                    elView.classList.add('hidden');
+                    elBtn.className = 'flex flex-col items-center justify-center py-2 rounded-2xl text-slate-400 hover:text-white border border-transparent font-bold transition';
+                }
+            });
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function cerrarModal(id) {
+            document.getElementById(id).classList.add('hidden');
+        }
+
+        function formatoMoneda(val, dec = 2) {
+            const n = Number(val) || 0;
+            return '$' + n.toLocaleString('es-MX', {
+                minimumFractionDigits: dec,
+                maximumFractionDigits: dec
+            });
+        }
+
+        function formatearCronometro(seg) {
+            const h = Math.floor(seg / 3600);
+            const m = Math.floor((seg % 3600) / 60);
+            const s = Math.floor(seg % 60);
+            return [h, m, s].map(v => String(v).padStart(2, '0')).join(':');
+        }
+
+        function obtenerFechaCorta() {
+            const d = new Date();
+            return d.toLocaleDateString('es-MX', { day: '2-digit', month: 'short' }) + ' ' +
+                   d.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        function mostrarToast(msg, tipo = 'info') {
+            const cont = document.getElementById('toast-container');
+            const estilos = {
+                success: 'bg-emerald-950/95 text-emerald-200 border-emerald-500/60',
+                error: 'bg-red-950/95 text-red-200 border-red-500/60',
+                info: 'bg-slate-900/95 text-cyan-200 border-cyan-500/50'
+            };
+            const el = document.createElement('div');
+            el.className = `${estilos[tipo] || estilos.info} border px-4 py-3 rounded-2xl shadow-2xl text-xs font-extrabold text-center mb-2 animate-slide-up`;
+            el.textContent = msg;
+            cont.appendChild(el);
+            setTimeout(() => {
+                el.style.opacity = '0';
+                el.style.transition = 'opacity 0.25s';
+                setTimeout(() => el.remove(), 250);
+            }, 2600);
+        }
+    </script>
+</body>
+</html>
+```
