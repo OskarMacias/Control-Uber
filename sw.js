@@ -1,11 +1,11 @@
-const CACHE_NAME = 'corolla-hev-v2';
+const CACHE_NAME = 'corolla-hev-v4';
 const ASSETS = [
   './',
   './index.html',
-  './manifest.json'
+  './manifest.json',
+  './icon-512.png'
 ];
 
-// Instala y guarda la app en la memoria del teléfono
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
@@ -13,7 +13,6 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
-// Limpia versiones viejas cuando actualices tu código
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
@@ -23,7 +22,6 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Responde desde la memoria del teléfono incluso en Modo Avión
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   event.respondWith(
