@@ -3,8 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Control Flotilla - Corolla HEV 2022</title>
+  <title>Toyota Corolla HEV • Flotilla</title>
   <link rel="manifest" href="./manifest.json">
+  <link rel="icon" type="image/png" href="https://upload.wikimedia.org/wikipedia/commons/thumb/9/9d/Toyota_carlogo.svg/512px-Toyota_carlogo.svg.png">
+  <link rel="apple-touch-icon" href="https://upload.wikimedia.org/wikipedia/commons/thumb/9/9d/Toyota_carlogo.svg/512px-Toyota_carlogo.svg.png">
   <meta name="theme-color" content="#0b1120">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -17,7 +19,6 @@
       --text-main: #f9fafb;
       --text-muted: #9ca3af;
       --emerald: #10b981;
-      --emerald-dark: #065f46;
       --blue: #3b82f6;
       --amber: #f59e0b;
       --purple: #8b5cf6;
@@ -38,15 +39,14 @@
       overflow-x: hidden;
     }
 
-    /* Barra Superior */
     .topbar {
       position: sticky;
       top: 0;
       z-index: 40;
-      background: rgba(11, 17, 32, 0.95);
+      background: rgba(11, 17, 32, 0.96);
       backdrop-filter: blur(8px);
       border-bottom: 1px solid var(--border);
-      padding: 12px 16px;
+      padding: 10px 14px;
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -54,10 +54,28 @@
       flex-wrap: wrap;
     }
 
+    .brand-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .toyota-badge {
+      width: 34px;
+      height: 34px;
+      background: #1f2937;
+      border: 1px solid #4b5563;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px;
+    }
+
     .brand-title {
-      font-size: 16px;
+      font-size: 15px;
       font-weight: 800;
-      color: var(--emerald);
+      color: #f9fafb;
       letter-spacing: 0.3px;
     }
 
@@ -72,14 +90,14 @@
       background: var(--bg-input);
       border: 1px solid var(--border);
       color: var(--text-main);
-      padding: 5px 10px;
+      padding: 5px 9px;
       border-radius: 999px;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 600;
       cursor: pointer;
       display: inline-flex;
       align-items: center;
-      gap: 5px;
+      gap: 4px;
     }
 
     .pill-btn.active-ble {
@@ -88,35 +106,20 @@
       background: rgba(59, 130, 246, 0.15);
     }
 
-    .pill-btn.online {
-      border-color: var(--emerald);
-      color: #6ee7b7;
-    }
+    .pill-btn.online { border-color: var(--emerald); color: #6ee7b7; }
+    .pill-btn.offline { border-color: var(--amber); color: #fcd34d; }
 
-    .pill-btn.offline {
-      border-color: var(--amber);
-      color: #fcd34d;
-    }
-
-    /* Contenedor Principal Adaptable (Celular 1 col vs Corolla Pantalla Ancha 2 col) */
     .app-container {
       max-width: 480px;
       margin: 0 auto;
       padding: 14px;
     }
 
-    .tab-section {
-      display: none;
-    }
-
-    .tab-section.active {
-      display: block;
-    }
+    .tab-section { display: none; }
+    .tab-section.active { display: block; }
 
     @media (min-width: 768px) {
-      body {
-        padding-bottom: 20px;
-      }
+      body { padding-bottom: 20px; }
       .app-container {
         max-width: 1120px;
         display: grid;
@@ -124,30 +127,22 @@
         gap: 16px;
         align-items: start;
       }
-      .bottom-nav {
-        display: none !important;
-      }
-      #sec-ruta {
-        display: block !important;
-        grid-column: 1;
-      }
+      .bottom-nav { display: none !important; }
+      #sec-ruta { display: block !important; grid-column: 1; }
       .right-column-desktop {
         grid-column: 2;
         display: flex;
         flex-direction: column;
         gap: 14px;
       }
-      #sec-bovedas, #sec-tarifas {
-        display: block !important;
-      }
+      #sec-bovedas, #sec-tarifas { display: block !important; }
     }
 
-    /* Tarjetas */
     .card {
       background: var(--bg-card);
       border: 1px solid var(--border);
       border-radius: 16px;
-      padding: 16px;
+      padding: 15px;
       margin-bottom: 14px;
     }
 
@@ -156,17 +151,17 @@
       justify-content: space-between;
       align-items: center;
       margin-bottom: 12px;
+      gap: 8px;
     }
 
     .card-title {
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.6px;
       color: var(--text-muted);
     }
 
-    /* Telemetría y Odómetro */
     .telemetry-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -182,25 +177,15 @@
       border: 1px solid rgba(255,255,255,0.05);
     }
 
-    .tele-label {
-      font-size: 11px;
-      color: var(--text-muted);
-      margin-bottom: 4px;
-    }
+    .tele-label { font-size: 11px; color: var(--text-muted); margin-bottom: 4px; }
+    .tele-val { font-size: 17px; font-weight: 800; color: var(--text-main); }
 
-    .tele-val {
-      font-size: 17px;
-      font-weight: 800;
-      color: var(--text-main);
-    }
-
-    /* Botones de Acción 1-Toque */
     .btn-action {
       width: 100%;
       border: none;
       border-radius: 14px;
-      padding: 16px;
-      font-size: 16px;
+      padding: 15px;
+      font-size: 15px;
       font-weight: 800;
       color: #fff;
       cursor: pointer;
@@ -213,15 +198,8 @@
       transition: transform 0.1s ease;
     }
 
-    .btn-action:active {
-      transform: scale(0.98);
-    }
-
-    .btn-sub {
-      font-size: 12px;
-      font-weight: 500;
-      opacity: 0.9;
-    }
+    .btn-action:active { transform: scale(0.98); }
+    .btn-sub { font-size: 12px; font-weight: 500; opacity: 0.9; }
 
     .bg-emerald { background: linear-gradient(135deg, #059669, #10b981); }
     .bg-blue { background: linear-gradient(135deg, #2563eb, #3b82f6); }
@@ -230,18 +208,8 @@
     .bg-red { background: linear-gradient(135deg, #dc2626, #ef4444); }
     .bg-slate { background: #374151; }
 
-    /* Formularios */
-    .form-group {
-      margin-bottom: 12px;
-    }
-
-    label {
-      display: block;
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--text-muted);
-      margin-bottom: 5px;
-    }
+    .form-group { margin-bottom: 12px; }
+    label { display: block; font-size: 12px; font-weight: 600; color: var(--text-muted); margin-bottom: 5px; }
 
     input, select {
       width: 100%;
@@ -254,17 +222,9 @@
       outline: none;
     }
 
-    input:focus, select:focus {
-      border-color: var(--emerald);
-    }
+    input:focus, select:focus { border-color: var(--emerald); }
+    .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
-    .row-2 {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-    }
-
-    /* Bóvedas */
     .vault-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -279,15 +239,16 @@
       padding: 12px;
     }
 
-    .vault-name {
-      font-size: 12px;
-      color: var(--text-muted);
-      margin-bottom: 4px;
-    }
+    .vault-name { font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
+    .vault-amount { font-size: 19px; font-weight: 800; }
 
-    .vault-amount {
-      font-size: 19px;
-      font-weight: 800;
+    .loan-card {
+      background: rgba(31, 41, 55, 0.85);
+      border: 1px solid #4b5563;
+      border-radius: 12px;
+      padding: 11px;
+      margin-bottom: 8px;
+      font-size: 12px;
     }
 
     .progress-wrap {
@@ -306,7 +267,6 @@
       transition: width 0.3s ease;
     }
 
-    /* Lista de Tarifas */
     .route-item {
       background: var(--bg-input);
       border: 1px solid var(--border);
@@ -319,20 +279,9 @@
       gap: 8px;
     }
 
-    .route-info strong {
-      display: block;
-      font-size: 14px;
-    }
-
-    .route-info span {
-      font-size: 12px;
-      color: var(--text-muted);
-    }
-
-    .route-actions {
-      display: flex;
-      gap: 6px;
-    }
+    .route-info strong { display: block; font-size: 14px; }
+    .route-info span { font-size: 12px; color: var(--text-muted); }
+    .route-actions { display: flex; gap: 6px; }
 
     .mini-btn {
       border: none;
@@ -344,18 +293,9 @@
       color: #fff;
     }
 
-    /* Historial */
-    .log-item {
-      border-bottom: 1px solid var(--border);
-      padding: 10px 0;
-      font-size: 13px;
-    }
+    .log-item { border-bottom: 1px solid var(--border); padding: 10px 0; font-size: 13px; }
+    .log-item:last-child { border-bottom: none; }
 
-    .log-item:last-child {
-      border-bottom: none;
-    }
-
-    /* Barra de Navegación Inferior (Móvil) */
     .bottom-nav {
       position: fixed;
       bottom: 0;
@@ -382,9 +322,7 @@
       cursor: pointer;
     }
 
-    .nav-item.active {
-      color: var(--emerald);
-    }
+    .nav-item.active { color: var(--emerald); }
 
     .badge-phase {
       background: rgba(16, 185, 129, 0.15);
@@ -396,19 +334,26 @@
       font-weight: 700;
     }
 
-    .hidden {
-      display: none !important;
-    }
+    .hidden { display: none !important; }
   </style>
 </head>
 <body>
 
-  <!-- BARRA SUPERIOR -->
+  <!-- BARRA SUPERIOR CON EMBLEMA TOYOTA -->
   <header class="topbar">
-    <div>
-      <div class="brand-title">COROLLA HEV • FLOTILLA</div>
-      <div style="font-size:11px; color:var(--text-muted);" id="odo-display" onclick="calibrarOdometro()">
-        Odo: <strong id="odo-val" style="color:#fff;">45,200.0</strong> km ✎
+    <div class="brand-wrap">
+      <div class="toyota-badge" title="Toyota Corolla HEV">
+        <svg viewBox="0 0 100 68" width="26" height="18" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <ellipse cx="50" cy="34" rx="45" ry="29" stroke="#E5E7EB" stroke-width="5.5"/>
+          <ellipse cx="50" cy="34" rx="14" ry="28" stroke="#E5E7EB" stroke-width="5"/>
+          <ellipse cx="50" cy="21" rx="31" ry="13" stroke="#E5E7EB" stroke-width="5"/>
+        </svg>
+      </div>
+      <div>
+        <div class="brand-title">COROLLA HEV • 2022</div>
+        <div style="font-size:11px; color:var(--text-muted);" id="odo-display" onclick="calibrarOdometro()">
+          Odo: <strong id="odo-val" style="color:#fff;">45,200.0</strong> km ✎
+        </div>
       </div>
     </div>
     <div class="status-row">
@@ -422,7 +367,6 @@
 
     <!-- COLUMNA 1: EN RUTA (1-TOQUE) -->
     <section id="sec-ruta" class="tab-section active">
-      <!-- Panel Simulador Opcional -->
       <div id="sim-panel" class="card hidden" style="border-color: var(--blue);">
         <div class="card-header">
           <span class="card-title" style="color:#93c5fd;">Simulador de Movimiento en Vivo</span>
@@ -434,7 +378,6 @@
         </div>
       </div>
 
-      <!-- Telemetría en Tiempo Real -->
       <div class="card">
         <div class="card-header">
           <span class="card-title">Estado de Operación</span>
@@ -456,7 +399,6 @@
           </div>
         </div>
 
-        <!-- Desglose Acumulado del Ciclo Activo -->
         <div id="cycle-summary" class="hidden" style="background:var(--bg-input); padding:10px; border-radius:10px; font-size:12px; margin-bottom:12px; border:1px solid var(--border);">
           <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
             <span style="color:var(--text-muted);">Acercamiento (A → B):</span>
@@ -526,13 +468,13 @@
             <span>🏠 Regresar Vacío a Base</span>
             <span class="btn-sub">Suma km de vuelta al costo del servicio</span>
           </button>
-          <button class="btn-action bg-emerald" onclick="quedarmeEnZona()">
+          <button class="btn-action bg-emerald" onclick="quedarEnZona()">
             <span>📍 Quedarme en Zona (0 km muertos)</span>
             <span class="btn-sub">Cierra viaje aquí y espera otro pasaje cercano</span>
           </button>
         </div>
 
-        <!-- FASE 4: ESPERANDO CLIENTE (VIAJE REDONDO) -->
+        <!-- FASE 4: ESPERANDO CLIENTE -->
         <div id="controls-waiting" class="hidden">
           <div style="text-align:center; padding:10px; background:var(--bg-input); border-radius:10px; margin-bottom:10px;">
             <div style="font-size:12px; color:var(--amber);">Tiempo de espera acumulado:</div>
@@ -574,25 +516,52 @@
       </div>
     </section>
 
-    <!-- COLUMNA DERECHA EN PANTALLA COROLLA / PESTAÑAS 2 Y 3 EN MÓVIL -->
+    <!-- COLUMNA DERECHA -->
     <div class="right-column-desktop">
 
-      <!-- SECCIÓN 2: BÓVEDAS VIVAS Y GASOLINA -->
+      <!-- SECCIÓN 2: BÓVEDAS Y PLAN DUAL DE CRÉDITO -->
       <section id="sec-bovedas" class="tab-section">
         <div class="card">
           <div class="card-header">
-            <span class="card-title">Meta Mensual Crédito Corolla</span>
-            <strong style="color:var(--emerald);" id="credit-goal-text">$0 / $9,000</strong>
+            <span class="card-title" id="active-month-label">Meta Mensual Crédito (Diciembre)</span>
+            <strong style="color:var(--emerald);" id="credit-goal-text">$0 / $7,783.09</strong>
           </div>
           <div class="progress-wrap">
             <div class="progress-bar" id="credit-progress-bar"></div>
           </div>
-          <div style="font-size:11px; color:var(--text-muted); display:flex; justify-content:space-between;">
+          <div style="font-size:11px; color:var(--text-muted); display:flex; justify-content:space-between; margin-bottom:12px;">
             <span id="credit-pct">0% completado</span>
-            <span id="credit-rem">Faltan $9,000.00</span>
+            <span id="credit-rem">Faltan $7,783.09</span>
           </div>
 
-          <div class="vault-grid" style="margin-top:14px;">
+          <!-- DESGLOSE DE LOS 2 PRÉSTAMOS -->
+          <div class="loan-card">
+            <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+              <strong style="color:#60a5fa;">Préstamo 1 (Inicia 1 Dic • 6 meses)</strong>
+              <span id="loan1-count" style="font-weight:700;">Pagos: 0 / 6</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; color:var(--text-muted);">
+              <span>Letra: <strong>$7,783.09</strong>/mes</span>
+              <span>Saldo: <strong id="loan1-bal" style="color:#fff;">$46,698.54</strong></span>
+            </div>
+          </div>
+
+          <div class="loan-card">
+            <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+              <strong style="color:#a78bfa;">Préstamo 2 (Inicia 1 Ene • 60 meses)</strong>
+              <span id="loan2-count" style="font-weight:700;">Pagos: 0 / 60</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; color:var(--text-muted);">
+              <span>Letra: <strong>$5,297.95</strong>/mes</span>
+              <span>Saldo: <strong id="loan2-bal" style="color:#fff;">$317,877.00</strong></span>
+            </div>
+          </div>
+
+          <button class="btn-action bg-purple" style="padding:11px; font-size:13px; margin-top:8px;" onclick="pagarMensualidadActual()">
+            ✅ Registrar Pago de Mensualidad del Mes
+          </button>
+
+          <div class="vault-grid" style="margin-top:12px; margin-bottom:0;">
             <div class="vault-box">
               <div class="vault-name">⛽ Caja Gasolina</div>
               <div class="vault-amount" style="color:#60a5fa;" id="v-gas">$0.00</div>
@@ -612,7 +581,7 @@
           </div>
         </div>
 
-        <!-- Registro de Recarga de Gasolina con Auto-Calibración -->
+        <!-- Registro de Recarga de Gasolina -->
         <div class="card">
           <div class="card-header">
             <span class="card-title">⛽ Registrar Carga de Gasolina</span>
@@ -648,7 +617,7 @@
           </button>
         </div>
 
-        <!-- Gasto de Taller / Mantenimiento -->
+        <!-- Gasto de Taller -->
         <div class="card">
           <div class="card-header">
             <span class="card-title">🔧 Registrar Gasto de Taller / Llantas</span>
@@ -735,10 +704,6 @@
             </div>
           </div>
           <div class="form-group">
-            <label>Meta Mensual Crédito ($ MXN)</label>
-            <input type="number" id="cfg-credit-goal" onchange="guardarConfig()">
-          </div>
-          <div class="form-group">
             <label>URL Firebase Realtime Database (Auto-Sync WiFi)</label>
             <input type="url" id="cfg-firebase-url" placeholder="https://tu-proyecto-default-rtdb.firebaseio.com" onchange="guardarConfig()">
           </div>
@@ -762,7 +727,7 @@
     </button>
     <button class="nav-item" onclick="cambiarTab('bovedas', this)">
       <span style="font-size:18px;">🏦</span>
-      <span>Bóvedas ($9k)</span>
+      <span>Crédito / Cajas</span>
     </button>
     <button class="nav-item" onclick="cambiarTab('tarifas', this)">
       <span style="font-size:18px;">⚙️</span>
@@ -771,8 +736,7 @@
   </nav>
 
   <script>
-    // ESTADO PERSISTENTE EN LOCALSTORAGE
-    const STORAGE_KEY = 'corolla_hev_flotilla_v5';
+    const STORAGE_KEY = 'corolla_hev_flotilla_v6';
     let state = {
       odometer: 45200.0,
       lastFullOdo: 45200.0,
@@ -781,8 +745,15 @@
         kml: 20.0,
         maintPerKm: 0.90,
         commPct: 45,
-        creditGoal: 9000,
         firebaseUrl: ''
+      },
+      loans: {
+        loan1Monthly: 7783.09,
+        loan1TotalMonths: 6,
+        loan1PaidMonths: 0,
+        loan2Monthly: 5297.95,
+        loan2TotalMonths: 60,
+        loan2PaidMonths: 0
       },
       vaults: {
         gas: 0,
@@ -800,9 +771,8 @@
       pendingSync: false
     };
 
-    // ESTADO EN VIVO DE RUTA
     let live = {
-      phase: 'IDLE', // IDLE, PICKUP, TRIP, POST_DROP, WAITING, RETURN_CLIENT, RETURNING, PERSONAL
+      phase: 'IDLE',
       kmAB: 0,
       kmBC: 0,
       kmCA: 0,
@@ -818,13 +788,18 @@
       lastGps: null
     };
 
-    // CARGAR DATOS GUARDADOS
     function cargarEstado() {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         try {
           const parsed = JSON.parse(saved);
-          state = { ...state, ...parsed, config: { ...state.config, ...(parsed.config || {}) }, vaults: { ...state.vaults, ...(parsed.vaults || {}) } };
+          state = {
+            ...state,
+            ...parsed,
+            config: { ...state.config, ...(parsed.config || {}) },
+            loans: { ...state.loans, ...(parsed.loans || {}) },
+            vaults: { ...state.vaults, ...(parsed.vaults || {}) }
+          };
         } catch (e) { console.error(e); }
       }
       actualizarUI();
@@ -839,7 +814,62 @@
       }
     }
 
-    // NAVEGACIÓN MÓVIL
+    // CALCULAR META MENSUAL ACTIVA SEGÚN EL CALENDARIO DE AMBOS PRÉSTAMOS
+    function obtenerMetaMensualActual() {
+      const l = state.loans;
+      const p1Activo = l.loan1PaidMonths < l.loan1TotalMonths;
+      // En el mes 0 (Diciembre 2026) solo corre Préstamo 1; a partir de Enero 2027 (loan1PaidMonths >= 1) corren ambos
+      const p2Activo = (l.loan1PaidMonths >= 1 || l.loan2PaidMonths > 0) && (l.loan2PaidMonths < l.loan2TotalMonths);
+
+      let meta = 0;
+      let etiqueta = '';
+
+      if (p1Activo && !p2Activo) {
+        meta = l.loan1Monthly;
+        etiqueta = 'Meta Diciembre (Solo Préstamo 1)';
+      } else if (p1Activo && p2Activo) {
+        meta = l.loan1Monthly + l.loan2Monthly;
+        etiqueta = `Meta Mes (Préstamo 1 + Préstamo 2)`;
+      } else if (!p1Activo && p2Activo) {
+        meta = l.loan2Monthly;
+        etiqueta = 'Meta Mensual (Solo Préstamo 2)';
+      } else {
+        meta = 0;
+        etiqueta = '¡Créditos Liquidados al 100%!';
+      }
+
+      return { meta, etiqueta, p1Activo, p2Activo };
+    }
+
+    function pagarMensualidadActual() {
+      const { meta, p1Activo, p2Activo } = obtenerMetaMensualActual();
+      if (meta <= 0) {
+        alert('¡Felicidades! Ya liquidaste ambos préstamos.');
+        return;
+      }
+      if (!confirm(`¿Registrar el pago de la mensualidad actual por $${meta.toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN? Se descontará de tu Bóveda Crédito.`)) {
+        return;
+      }
+
+      state.vaults.credit -= meta;
+      if (p1Activo) state.loans.loan1PaidMonths++;
+      if (p2Activo) state.loans.loan2PaidMonths++;
+
+      state.history.unshift({
+        date: new Date().toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' }),
+        type: `🏦 Pago Mensualidad Crédito ($${meta.toFixed(2)})`,
+        km: '0',
+        odoRange: state.odometer.toFixed(1),
+        charged: '0.00',
+        gas: '0.00',
+        maint: '0.00',
+        comm: '0.00',
+        credit: (-meta).toFixed(2)
+      });
+
+      guardarEstado();
+    }
+
     function cambiarTab(tab, el) {
       document.querySelectorAll('.tab-section').forEach(s => s.classList.remove('active'));
       document.getElementById('sec-' + tab).classList.add('active');
@@ -847,7 +877,6 @@
       el.classList.add('active');
     }
 
-    // CALIBRAR ODÓMETRO MANUALMENTE
     function calibrarOdometro() {
       const val = prompt('Ingresa el kilometraje actual exacto de tu tablero Corolla:', state.odometer.toFixed(1));
       if (val !== null && !isNaN(parseFloat(val))) {
@@ -856,7 +885,6 @@
       }
     }
 
-    // TELEMETRÍA: BUCLE CADA SEGUNDO
     setInterval(() => {
       if (live.phase !== 'IDLE') {
         live.secondsTotal++;
@@ -865,7 +893,6 @@
           const waitFee = (live.waitSeconds / 60) * 2.50;
           document.getElementById('wait-fee-live').textContent = '$' + waitFee.toFixed(2) + ' MXN';
         }
-        // Si está activo el simulador de velocidad, avanzar odómetro
         if (live.simMode && live.speedKmh > 0) {
           const deltaKm = live.speedKmh / 3600;
           avanzarDistancia(deltaKm);
@@ -885,7 +912,6 @@
       actualizarPreviewComision();
     }
 
-    // GPS REAL DEL TELÉFONO
     if ('geolocation' in navigator) {
       navigator.geolocation.watchPosition((pos) => {
         if (live.simMode) return;
@@ -895,7 +921,7 @@
         }
         if (live.phase !== 'IDLE' && live.lastGps) {
           const d = haversine(live.lastGps.lat, live.lastGps.lon, latitude, longitude);
-          if (d > 0.005 && d < 2) { // Filtro anti-salto GPS
+          if (d > 0.005 && d < 2) {
             avanzarDistancia(d);
           }
         }
@@ -911,7 +937,6 @@
       return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
     }
 
-    // SIMULADOR DE VELOCIDAD
     function toggleSimulador() {
       const p = document.getElementById('sim-panel');
       p.classList.toggle('hidden');
@@ -928,7 +953,6 @@
       document.getElementById('sim-speed-label').textContent = val + ' km/h';
     }
 
-    // CONEXIÓN OBD2 BLUETOOTH LOW ENERGY (WEB BLUETOOTH)
     async function conectarOBD2() {
       if (!navigator.bluetooth) {
         alert('Tu navegador no soporta Web Bluetooth. Usa Google Chrome en Android con un escáner OBD2 BLE (ej. Vgate iCar Pro BLE).');
@@ -947,7 +971,6 @@
       }
     }
 
-    // FLUJO DE BOTONES 1-TOQUE
     function setPhase(newPhase, badgeText) {
       live.phase = newPhase;
       live.kmCurrentLeg = 0;
@@ -999,7 +1022,7 @@
       const fare = parseFloat(document.getElementById('trip-fare-input').value) || 0;
       const gasCostPerKm = state.config.gasPrice / state.config.kml;
       const totalCostPerKm = gasCostPerKm + state.config.maintPerKm;
-      const estReturnKm = live.kmAB + live.kmBC; // Estimado si regresa vacío
+      const estReturnKm = live.kmAB + live.kmBC;
       const totalEstKm = live.kmAB + live.kmBC + estReturnKm;
       const autoCost = totalEstKm * totalCostPerKm;
       const netFree = Math.max(0, fare - autoCost);
@@ -1092,7 +1115,6 @@
       }
     }
 
-    // VUELTA PERSONAL (DESCUENTA COSTO PURO DE TU COMISIÓN HACIA EL AUTO)
     function iniciarVueltaPersonal() {
       live.kmAB = 0; live.kmBC = 0; live.kmCA = 0;
       live.secondsTotal = 0;
@@ -1126,7 +1148,6 @@
       guardarEstado();
     }
 
-    // RECARGA DE GASOLINA CON AUTO-CALIBRACIÓN
     function previsualizarGasolina() {
       const pesos = parseFloat(document.getElementById('fuel-pesos').value);
       const liters = parseFloat(document.getElementById('fuel-liters').value);
@@ -1191,7 +1212,6 @@
       alert('Carga registrada. Precio del litro y rendimiento actualizados en toda la app.');
     }
 
-    // GASTOS DE TALLER
     function registrarMantenimiento() {
       const desc = document.getElementById('maint-desc').value.trim() || 'Mantenimiento / Taller';
       const cost = parseFloat(document.getElementById('maint-cost').value);
@@ -1216,7 +1236,6 @@
       guardarEstado();
     }
 
-    // TARIFAS BIDIRECCIONALES EDITABLES
     function guardarTarifa() {
       const name = document.getElementById('route-name').value.trim();
       const km = parseFloat(document.getElementById('route-km').value);
@@ -1258,13 +1277,11 @@
       }
     }
 
-    // CONFIGURACIÓN Y SINCRONIZACIÓN FIREBASE
     function guardarConfig() {
       state.config.gasPrice = parseFloat(document.getElementById('cfg-gas-price').value) || 24;
       state.config.kml = parseFloat(document.getElementById('cfg-kml').value) || 20;
       state.config.maintPerKm = parseFloat(document.getElementById('cfg-maint-km').value) || 0.90;
       state.config.commPct = parseFloat(document.getElementById('cfg-comm-pct').value) || 45;
-      state.config.creditGoal = parseFloat(document.getElementById('cfg-credit-goal').value) || 9000;
       state.config.firebaseUrl = document.getElementById('cfg-firebase-url').value.trim().replace(/\/$/, '');
       guardarEstado();
     }
@@ -1296,7 +1313,6 @@
       }
     }
 
-    // DETECCIÓN AUTOMÁTICA DE CONEXIÓN WI-FI / ONLINE
     function actualizarEstadoRed() {
       const badge = document.getElementById('net-status');
       if (navigator.onLine) {
@@ -1313,7 +1329,6 @@
     window.addEventListener('online', actualizarEstadoRed);
     window.addEventListener('offline', actualizarEstadoRed);
 
-    // EXPORTAR CSV Y REINICIO
     function exportarCSV() {
       let csv = 'Fecha,Tipo,Km,Odometro,Cobrado,Gasolina,Taller,Comision,Credito\n';
       state.history.forEach(h => {
@@ -1327,14 +1342,15 @@
     }
 
     function reiniciarTodo() {
-      if (confirm('¿Seguro que deseas poner en $0.00 todas las bóvedas y borrar el historial?')) {
+      if (confirm('¿Seguro que deseas poner en $0.00 todas las bóvedas, reiniciar los pagos de préstamos y borrar el historial?')) {
         state.vaults = { gas: 0, maint: 0, comm: 0, credit: 0 };
+        state.loans.loan1PaidMonths = 0;
+        state.loans.loan2PaidMonths = 0;
         state.history = [];
         guardarEstado();
       }
     }
 
-    // RENDERIZADO DE INTERFAZ
     function actualizarTelemetriaUI() {
       document.getElementById('live-km').textContent = live.kmCurrentLeg.toFixed(2) + ' km';
       const mins = String(Math.floor(live.secondsTotal / 60)).padStart(2, '0');
@@ -1351,31 +1367,42 @@
       document.getElementById('odo-val').textContent = state.odometer.toLocaleString('es-MX', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
       document.getElementById('fuel-odo').value = state.odometer.toFixed(1);
 
-      // Bóvedas
       document.getElementById('v-gas').textContent = '$' + state.vaults.gas.toFixed(2);
       document.getElementById('v-maint').textContent = '$' + state.vaults.maint.toFixed(2);
       document.getElementById('v-comm').textContent = '$' + state.vaults.comm.toFixed(2);
       document.getElementById('v-credit').textContent = '$' + state.vaults.credit.toFixed(2);
 
-      // Barra de progreso crédito
-      const goal = state.config.creditGoal || 9000;
-      const pct = Math.min(100, Math.max(0, (state.vaults.credit / goal) * 100));
-      const rem = Math.max(0, goal - state.vaults.credit);
-      document.getElementById('credit-goal-text').textContent = `$${state.vaults.credit.toFixed(0)} / $${goal.toLocaleString('es-MX')}`;
+      // Actualizar Meta Dual de Crédito
+      const { meta, etiqueta } = obtenerMetaMensualActual();
+      document.getElementById('active-month-label').textContent = etiqueta;
+
+      const pct = meta > 0 ? Math.min(100, Math.max(0, (state.vaults.credit / meta) * 100)) : 100;
+      const rem = Math.max(0, meta - state.vaults.credit);
+      document.getElementById('credit-goal-text').textContent = `$${state.vaults.credit.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / $${meta.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
       document.getElementById('credit-progress-bar').style.width = pct.toFixed(1) + '%';
-      document.getElementById('credit-pct').textContent = pct.toFixed(1) + '% completado';
-      document.getElementById('credit-rem').textContent = `Faltan $${rem.toFixed(2)}`;
+      document.getElementById('credit-pct').textContent = pct.toFixed(1) + '% de la letra del mes';
+      document.getElementById('credit-rem').textContent = rem > 0 ? `Faltan $${rem.toLocaleString('es-MX', { minimumFractionDigits: 2 })}` : '¡Meta del mes cubierta!';
+
+      // Actualizar tarjetas individuales de los 2 préstamos
+      const l = state.loans;
+      const rem1 = Math.max(0, l.loan1TotalMonths - l.loan1PaidMonths);
+      const bal1 = rem1 * l.loan1Monthly;
+      document.getElementById('loan1-count').textContent = `Pagos: ${l.loan1PaidMonths} / ${l.loan1TotalMonths}`;
+      document.getElementById('loan1-bal').textContent = '$' + bal1.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+      const rem2 = Math.max(0, l.loan2TotalMonths - l.loan2PaidMonths);
+      const bal2 = rem2 * l.loan2Monthly;
+      document.getElementById('loan2-count').textContent = `Pagos: ${l.loan2PaidMonths} / ${l.loan2TotalMonths}`;
+      document.getElementById('loan2-bal').textContent = '$' + bal2.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
       document.getElementById('current-kml-badge').textContent = `${state.config.kml} km/L • $${state.config.gasPrice}/L`;
 
-      // Inputs de configuración
       document.getElementById('cfg-gas-price').value = state.config.gasPrice;
       document.getElementById('cfg-kml').value = state.config.kml;
       document.getElementById('cfg-maint-km').value = state.config.maintPerKm;
       document.getElementById('cfg-comm-pct').value = state.config.commPct;
-      document.getElementById('cfg-credit-goal').value = state.config.creditGoal;
       document.getElementById('cfg-firebase-url').value = state.config.firebaseUrl;
 
-      // Selector rápido y lista de tarifas
       const sel = document.getElementById('quick-route-select');
       const rList = document.getElementById('routes-list');
       sel.innerHTML = '<option value="">-- Seleccionar tarifa fija --</option>';
@@ -1397,7 +1424,6 @@
         `;
       });
 
-      // Historial
       const hList = document.getElementById('history-list');
       if (state.history.length === 0) {
         hList.innerHTML = '<div style="color:var(--text-muted); font-size:12px;">Sin movimientos registrados aún.</div>';
@@ -1419,7 +1445,6 @@
       }
     }
 
-    // REGISTRO DEL SERVICE WORKER PARA MODO OFFLINE
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js')
