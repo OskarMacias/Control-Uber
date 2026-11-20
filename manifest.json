@@ -1,5 +1,5 @@
 {
-  "name": "Control Flotilla Corolla HEV",
+  "name": "Toyota Corolla HEV • Flotilla",
   "short_name": "Corolla HEV",
   "description": "Control financiero, odómetro y bóvedas para transporte privado",
   "start_url": "./index.html",
@@ -9,7 +9,7 @@
   "theme_color": "#0b1120",
   "icons": [
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/3202/3202926.png",
+      "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9d/Toyota_carlogo.svg/512px-Toyota_carlogo.svg.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
