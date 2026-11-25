@@ -182,11 +182,11 @@
 
     .btn-edit-leg {
       width: 100%;
-      background: rgba(59, 130, 246, 0.14);
+      background: rgba(59, 130, 246, 0.16);
       border: 1px dashed var(--blue);
       color: #93c5fd;
       border-radius: 10px;
-      padding: 8px 12px;
+      padding: 9px 12px;
       font-size: 12px;
       font-weight: 700;
       cursor: pointer;
@@ -195,10 +195,6 @@
       align-items: center;
       justify-content: center;
       gap: 6px;
-    }
-
-    .btn-edit-leg:active {
-      background: rgba(59, 130, 246, 0.25);
     }
 
     .btn-action {
@@ -446,6 +442,10 @@
             <span>🟢 Salir de Base (Ir por Cliente)</span>
             <span class="btn-sub">Sella odómetro e inicia conteo A → B</span>
           </button>
+          <button class="btn-action bg-blue" onclick="iniciarTrasladoOperativo()">
+            <span>🚚 Traslado Vacío a Base / Zona ($0)</span>
+            <span class="btn-sub">Suma km operativos al auto sin castigar tu comisión</span>
+          </button>
           <button class="btn-action bg-purple" onclick="iniciarVueltaPersonal()">
             <span>🟣 Iniciar Vuelta Personal</span>
             <span class="btn-sub">Sin comisión • Descuenta costo puro de tu bolsa</span>
@@ -458,7 +458,11 @@
             <span>📍 Recogí al Cliente (Iniciar B → C)</span>
             <span class="btn-sub">Congela km muertos e inicia viaje efectivo</span>
           </button>
-          <button class="btn-action bg-slate" onclick="cancelarCiclo()">
+          <button class="btn-action bg-slate" onclick="cerrarComoTrasladoVacio()">
+            <span>🚚 Cerrar como Traslado Vacío ($0)</span>
+            <span class="btn-sub">Guarda los km recorridos sin cobrar cliente</span>
+          </button>
+          <button class="btn-action bg-red" onclick="cancelarCiclo()">
             <span>✖ Cancelar Servicio</span>
           </button>
         </div>
@@ -472,15 +476,15 @@
             </select>
           </div>
           <div class="form-group">
-            <label>Monto a Cobrar al Cliente ($ MXN)</label>
-            <input type="number" id="trip-fare-input" placeholder="Ej. 300" step="5">
+            <label>Monto a Cobrar al Cliente ($ MXN — pon 0 si fue traslado vacío)</label>
+            <input type="number" id="trip-fare-input" placeholder="Ej. 300 (o 0 si vienes vacío)" step="5">
           </div>
           <div id="live-commission-preview" style="background:rgba(16,185,129,0.1); border:1px solid var(--emerald); border-radius:10px; padding:10px; font-size:12px; margin-bottom:10px;">
             Calculando reparto estimado...
           </div>
           <button class="btn-action bg-emerald" onclick="llegarDestino()">
-            <span>🏁 Llegué al Destino (Dejé Cliente)</span>
-            <span class="btn-sub">Registra cobro y elige retorno o espera</span>
+            <span>🏁 Llegué al Destino (Finalizar Tramo)</span>
+            <span class="btn-sub">Registra cobro (o $0) y elige retorno o espera</span>
           </button>
         </div>
 
@@ -495,8 +499,8 @@
             <span class="btn-sub">Suma km de vuelta al costo del servicio</span>
           </button>
           <button class="btn-action bg-emerald" onclick="quedarEnZona()">
-            <span>📍 Quedarme en Zona (0 km muertos)</span>
-            <span class="btn-sub">Cierra viaje aquí y espera otro pasaje cercano</span>
+            <span>📍 Quedarme en Zona / Base (Cerrar aquí)</span>
+            <span class="btn-sub">Cierra el recorrido actual y guarda en bitácora</span>
           </button>
         </div>
 
@@ -840,7 +844,6 @@
       }
     }
 
-    // CALCULAR META MENSUAL ACTIVA SEGÚN EL CALENDARIO DE AMBOS PRÉSTAMOS
     function obtenerMetaMensualActual() {
       const l = state.loans;
       const p1Activo = l.loan1PaidMonths < l.loan1TotalMonths;
@@ -913,7 +916,7 @@
     // CORRECCIÓN MANUAL DE KILÓMETROS DEL TRAMO ACTUAL (ANTI-FALLO GPS)
     function editarKmTramoActual() {
       if (live.phase === 'IDLE' || live.phase === 'POST_DROP' || live.phase === 'WAITING') {
-        alert('Inicia un tramo en movimiento (Acercamiento, Con Cliente, Retorno o Personal) para ajustar su distancia.');
+        alert('Inicia un tramo en movimiento para ajustar su distancia.');
         return;
       }
       const nuevoVal = prompt(
@@ -1015,7 +1018,7 @@
 
     async function conectarOBD2() {
       if (!navigator.bluetooth) {
-        alert('Tu navegador no soporta Web Bluetooth. Usa Google Chrome en Android con un escáner OBD2 BLE (ej. Vgate iCar Pro BLE).');
+        alert('Tu navegador no soporta Web Bluetooth. Usa Google Chrome en Android con un escáner OBD2 BLE.');
         return;
       }
       try {
@@ -1027,7 +1030,7 @@
         document.getElementById('btn-ble').textContent = '🔵 ' + (device.name || 'OBD2');
         alert('Conectado a ' + (device.name || 'Escáner OBD2') + '. Listo para telemetría.');
       } catch (err) {
-        console.log('OBD2 cancelado o no disponible:', err);
+        console.log('OBD2 cancelado:', err);
       }
     }
 
@@ -1064,6 +1067,18 @@
       setPhase('PICKUP', 'YENDO POR CLIENTE (A → B)');
     }
 
+    // NUEVO: TRASLADO OPERATIVO SIN COBRO ($0)
+    function iniciarTrasladoOperativo() {
+      live.kmAB = 0; live.kmBC = 0; live.kmCA = 0;
+      live.secondsTotal = 0; live.waitSeconds = 0;
+      live.odoStart = state.odometer;
+      setPhase('RETURNING', 'TRASLADO OPERATIVO VACÍO ($0)');
+    }
+
+    function cerrarComoTrasladoVacio() {
+      cerrarServicioCompleto(0, '🚚 Traslado Vacío Operativo ($0)');
+    }
+
     function recogerCliente() {
       live.odoPickup = state.odometer;
       document.getElementById('trip-fare-input').value = '';
@@ -1086,7 +1101,7 @@
       const fare = parseFloat(document.getElementById('trip-fare-input').value) || 0;
       const gasCostPerKm = state.config.gasPrice / state.config.kml;
       const totalCostPerKm = gasCostPerKm + state.config.maintPerKm;
-      const estReturnKm = live.kmAB + live.kmBC;
+      const estReturnKm = fare > 0 ? (live.kmAB + live.kmBC) : 0;
       const totalEstKm = live.kmAB + live.kmBC + estReturnKm;
       const autoCost = totalEstKm * totalCostPerKm;
       const netFree = Math.max(0, fare - autoCost);
@@ -1094,20 +1109,25 @@
       const credit = netFree - comm;
 
       document.getElementById('live-commission-preview').innerHTML = `
-        <strong>Vista previa con regreso vacío (${totalEstKm.toFixed(1)} km totales):</strong><br>
+        <strong>Vista previa (${totalEstKm.toFixed(1)} km):</strong><br>
         • Costo Auto ($${totalCostPerKm.toFixed(2)}/km): <strong>$${autoCost.toFixed(2)}</strong><br>
         • Tu Comisión (${state.config.commPct}%): <strong style="color:#34d399;">$${comm.toFixed(2)}</strong> | Crédito: <strong style="color:#a78bfa;">$${credit.toFixed(2)}</strong>
       `;
     }
 
     function llegarDestino() {
-      const fare = parseFloat(document.getElementById('trip-fare-input').value);
-      if (!fare || fare <= 0) {
-        alert('Ingresa el monto cobrado al cliente antes de finalizar el tramo.');
+      const rawVal = document.getElementById('trip-fare-input').value.trim();
+      const fare = rawVal === '' ? 0 : parseFloat(rawVal);
+      if (isNaN(fare) || fare < 0) {
+        alert('Ingresa un monto válido (0 o mayor).');
         return;
       }
       live.fareBase = fare;
       live.odoDrop = state.odometer;
+      if (fare === 0) {
+        cerrarServicioCompleto(0, '🚚 Traslado Vacío Operativo ($0)');
+        return;
+      }
       setPhase('POST_DROP', 'CLIENTE EN DESTINO (ELIGE ACCIÓN)');
     }
 
@@ -1136,19 +1156,20 @@
     }
 
     function interceptarNuevoServicio() {
-      cerrarServicioCompleto(live.fareBase, 'Servicio (Interceptado en regreso)');
+      cerrarServicioCompleto(live.fareBase, 'Servicio / Traslado previo');
       iniciarAcercamiento();
     }
 
     function llegarABase() {
-      cerrarServicioCompleto(live.fareBase, 'Servicio Completo Ida/Vuelta');
+      const label = live.fareBase > 0 ? 'Servicio Completo Ida/Vuelta' : '🚚 Traslado Vacío a Base ($0)';
+      cerrarServicioCompleto(live.fareBase, label);
     }
 
     function cerrarServicioCompleto(totalCobrado, tipoEtiqueta) {
       const totalKm = live.kmAB + live.kmBC + live.kmCA;
       const gasCost = totalKm * (state.config.gasPrice / state.config.kml);
       const maintCost = totalKm * state.config.maintPerKm;
-      const netFree = totalCobrado - gasCost - maintCost;
+      const netFree = Math.max(0, totalCobrado - gasCost - maintCost);
       const comm = netFree * (state.config.commPct / 100);
       const credit = netFree - comm;
 
@@ -1169,12 +1190,14 @@
         credit: credit.toFixed(2)
       });
 
+      live.fareBase = 0;
       setPhase('IDLE', 'EN BASE (LISTO)');
       guardarEstado();
     }
 
     function cancelarCiclo() {
       if (confirm('¿Cancelar el servicio actual sin guardar?')) {
+        live.fareBase = 0;
         setPhase('IDLE', 'EN BASE (LISTO)');
       }
     }
