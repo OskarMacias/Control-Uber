@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Toyota Corolla HEV • Flotilla</title>
   <link rel="manifest" href="./manifest.json">
-  <link rel="icon" type="image/png" href="https://upload.wikimedia.org/wikipedia/commons/thumb/9/9d/Toyota_carlogo.svg/512px-Toyota_carlogo.svg.png">
-  <link rel="apple-touch-icon" href="https://upload.wikimedia.org/wikipedia/commons/thumb/9/9d/Toyota_carlogo.svg/512px-Toyota_carlogo.svg.png">
+  <link rel="icon" type="image/png" href="./icon-512.png">
+  <link rel="apple-touch-icon" href="./icon-512.png">
   <meta name="theme-color" content="#0b1120">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -166,7 +166,7 @@
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 8px;
-      margin-bottom: 12px;
+      margin-bottom: 10px;
     }
 
     .tele-box {
@@ -179,6 +179,27 @@
 
     .tele-label { font-size: 11px; color: var(--text-muted); margin-bottom: 4px; }
     .tele-val { font-size: 17px; font-weight: 800; color: var(--text-main); }
+
+    .btn-edit-leg {
+      width: 100%;
+      background: rgba(59, 130, 246, 0.14);
+      border: 1px dashed var(--blue);
+      color: #93c5fd;
+      border-radius: 10px;
+      padding: 8px 12px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .btn-edit-leg:active {
+      background: rgba(59, 130, 246, 0.25);
+    }
 
     .btn-action {
       width: 100%;
@@ -398,6 +419,11 @@
             <div class="tele-val" id="live-speed">0 km/h</div>
           </div>
         </div>
+
+        <!-- BOTÓN DE CORRECCIÓN MANUAL DE KILÓMETROS DEL TRAMO -->
+        <button id="btn-edit-leg-km" class="btn-edit-leg hidden" onclick="editarKmTramoActual()">
+          <span>✎ Ajustar km del tramo actual (si falló GPS)</span>
+        </button>
 
         <div id="cycle-summary" class="hidden" style="background:var(--bg-input); padding:10px; border-radius:10px; font-size:12px; margin-bottom:12px; border:1px solid var(--border);">
           <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
@@ -818,7 +844,6 @@
     function obtenerMetaMensualActual() {
       const l = state.loans;
       const p1Activo = l.loan1PaidMonths < l.loan1TotalMonths;
-      // En el mes 0 (Diciembre 2026) solo corre Préstamo 1; a partir de Enero 2027 (loan1PaidMonths >= 1) corren ambos
       const p2Activo = (l.loan1PaidMonths >= 1 || l.loan2PaidMonths > 0) && (l.loan2PaidMonths < l.loan2TotalMonths);
 
       let meta = 0;
@@ -883,6 +908,41 @@
         state.odometer = parseFloat(val);
         guardarEstado();
       }
+    }
+
+    // CORRECCIÓN MANUAL DE KILÓMETROS DEL TRAMO ACTUAL (ANTI-FALLO GPS)
+    function editarKmTramoActual() {
+      if (live.phase === 'IDLE' || live.phase === 'POST_DROP' || live.phase === 'WAITING') {
+        alert('Inicia un tramo en movimiento (Acercamiento, Con Cliente, Retorno o Personal) para ajustar su distancia.');
+        return;
+      }
+      const nuevoVal = prompt(
+        `El GPS/app registra ${live.kmCurrentLeg.toFixed(2)} km en este tramo.\nIngresa los kilómetros reales según el tablero de tu Corolla:`,
+        live.kmCurrentLeg.toFixed(1)
+      );
+      if (nuevoVal === null) return;
+      const parsed = parseFloat(nuevoVal);
+      if (isNaN(parsed) || parsed < 0) {
+        alert('Ingresa un número válido de kilómetros.');
+        return;
+      }
+
+      const diferencia = parsed - live.kmCurrentLeg;
+      live.kmCurrentLeg = parsed;
+      state.odometer = Math.max(0, state.odometer + diferencia);
+
+      if (live.phase === 'PICKUP') {
+        live.kmAB = Math.max(0, live.kmAB + diferencia);
+      } else if (live.phase === 'TRIP' || live.phase === 'RETURN_CLIENT') {
+        live.kmBC = Math.max(0, live.kmBC + diferencia);
+      } else if (live.phase === 'RETURNING' || live.phase === 'PERSONAL') {
+        live.kmCA = Math.max(0, live.kmCA + diferencia);
+      }
+
+      document.getElementById('odo-val').textContent = state.odometer.toLocaleString('es-MX', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+      actualizarTelemetriaUI();
+      actualizarPreviewComision();
+      guardarEstado(false);
     }
 
     setInterval(() => {
@@ -990,6 +1050,10 @@
       };
       document.getElementById(map[newPhase]).classList.remove('hidden');
       document.getElementById('cycle-summary').classList.toggle('hidden', newPhase === 'IDLE' || newPhase === 'PERSONAL');
+
+      const editablePhases = ['PICKUP', 'TRIP', 'RETURN_CLIENT', 'RETURNING', 'PERSONAL'];
+      document.getElementById('btn-edit-leg-km').classList.toggle('hidden', !editablePhases.includes(newPhase));
+
       actualizarTelemetriaUI();
     }
 
@@ -1372,7 +1436,6 @@
       document.getElementById('v-comm').textContent = '$' + state.vaults.comm.toFixed(2);
       document.getElementById('v-credit').textContent = '$' + state.vaults.credit.toFixed(2);
 
-      // Actualizar Meta Dual de Crédito
       const { meta, etiqueta } = obtenerMetaMensualActual();
       document.getElementById('active-month-label').textContent = etiqueta;
 
@@ -1383,7 +1446,6 @@
       document.getElementById('credit-pct').textContent = pct.toFixed(1) + '% de la letra del mes';
       document.getElementById('credit-rem').textContent = rem > 0 ? `Faltan $${rem.toLocaleString('es-MX', { minimumFractionDigits: 2 })}` : '¡Meta del mes cubierta!';
 
-      // Actualizar tarjetas individuales de los 2 préstamos
       const l = state.loans;
       const rem1 = Math.max(0, l.loan1TotalMonths - l.loan1PaidMonths);
       const bal1 = rem1 * l.loan1Monthly;
