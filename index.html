@@ -370,7 +370,7 @@
       <div>
         <div class="brand-title">COROLLA HEV • 2022</div>
         <div style="font-size:11px; color:var(--text-muted);" id="odo-display" onclick="calibrarOdometro()">
-          Odo: <strong id="odo-val" style="color:#fff;">45,200.0</strong> km ✎
+          Odo: <strong id="odo-val" style="color:#fff;">53,624.0</strong> km ✎
         </div>
       </div>
     </div>
@@ -562,11 +562,11 @@
         <div class="row-3">
           <div class="form-group">
             <label>Km Reales</label>
-            <input type="number" id="man-km" placeholder="Ej. 12" step="0.1">
+            <input type="number" id="man-km" placeholder="Ej. 21.7" step="0.1">
           </div>
           <div class="form-group">
             <label>Minutos</label>
-            <input type="number" id="man-mins" placeholder="Ej. 15">
+            <input type="number" id="man-mins" placeholder="Ej. 40">
           </div>
           <div class="form-group">
             <label>Cobro ($)</label>
@@ -657,11 +657,11 @@
           <div class="row-2">
             <div class="form-group">
               <label>Pesos Pagados ($)</label>
-              <input type="number" id="fuel-pesos" placeholder="Ej. 700" oninput="previsualizarGasolina()">
+              <input type="number" id="fuel-pesos" placeholder="Ej. 334.45" oninput="previsualizarGasolina()">
             </div>
             <div class="form-group">
               <label>Litros Cargados (L)</label>
-              <input type="number" id="fuel-liters" placeholder="Ej. 29.4" step="0.01" oninput="previsualizarGasolina()">
+              <input type="number" id="fuel-liters" placeholder="Ej. 14.082" step="0.001" oninput="previsualizarGasolina()">
             </div>
           </div>
           <div class="row-2">
@@ -713,7 +713,7 @@
               <button class="mini-btn bg-red" onclick="reiniciarTodo()">🗑️ Reset</button>
             </div>
           </div>
-          <div id="history-list" style="max-height:240px; overflow-y:auto;">
+          <div id="history-list" style="max-height:280px; overflow-y:auto;">
             <div style="color:var(--text-muted); font-size:12px;">Sin movimientos registrados aún.</div>
           </div>
         </div>
@@ -803,12 +803,22 @@
   </nav>
 
   <script>
-    const STORAGE_KEY = 'corolla_hev_flotilla_v6';
+    // DESREGISTRAR SERVICE WORKERS VIEJOS PARA EVITAR CACHÉ ATASCADO
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(registrations => {
+        for (let reg of registrations) {
+          reg.unregister();
+        }
+      });
+    }
+
+    const STORAGE_KEY = 'corolla_hev_flotilla_v9';
+    // DATOS PRECARGADOS DESDE TUS CAPTURAS DEL 25/11/2026 (EL DIEZ -> VILLA JUÁREZ)
     let state = {
-      odometer: 45200.0,
-      lastFullOdo: 45200.0,
+      odometer: 53624.0,
+      lastFullOdo: 53602.0,
       config: {
-        gasPrice: 24.00,
+        gasPrice: 23.75,
         kml: 20.0,
         maintPerKm: 0.90,
         commPct: 45,
@@ -823,10 +833,10 @@
         loan2PaidMonths: 0
       },
       vaults: {
-        gas: 0,
-        maint: 0,
-        comm: 0,
-        credit: 0
+        gas: -308.68, // -334.45 carga tanque lleno + 25.77 acumulado traslado 21.7 km
+        maint: 19.53, // 21.7 km * $0.90/km
+        comm: 0.00,
+        credit: 0.00
       },
       routes: [
         { name: 'Villa Juárez ↔ Ley del Valle', km: 22, price: 300 },
@@ -834,7 +844,30 @@
         { name: 'Villa Juárez ↔ Centro Culiacán', km: 27, price: 360 },
         { name: 'Villa Juárez ↔ Aeropuerto Culiacán', km: 24, price: 330 }
       ],
-      history: [],
+      history: [
+        {
+          date: '25/11/26, 3:47 p. m.',
+          type: '🚚 Traslado Vacío Operativo (40 min) - El Diez → Villa Juárez',
+          km: '21.70',
+          odoRange: '53602.0 → 53624.0',
+          charged: '0.00',
+          gas: '25.77',
+          maint: '19.53',
+          comm: '0.00',
+          credit: '0.00'
+        },
+        {
+          date: '25/11/26, 3:06 p. m.',
+          type: '⛽ Carga Tanque Lleno El Diez (14.082L @ $23.75/L)',
+          km: '0',
+          odoRange: '53602.0',
+          charged: '0.00',
+          gas: '-334.45',
+          maint: '0.00',
+          comm: '0.00',
+          credit: '0.00'
+        }
+      ],
       pendingSync: false
     };
 
@@ -868,6 +901,8 @@
             vaults: { ...state.vaults, ...(parsed.vaults || {}) }
           };
         } catch (e) { console.error(e); }
+      } else {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
       }
       actualizarUI();
     }
@@ -1017,7 +1052,6 @@
       }
     }
 
-    // CORRECCIÓN MANUAL DE KILÓMETROS Y TIEMPO DEL TRAMO EN VIVO
     function editarTramoEnVivo() {
       if (live.phase === 'IDLE' || live.phase === 'POST_DROP') {
         alert('Inicia un tramo en movimiento para ajustar su distancia y tiempo.');
@@ -1474,7 +1508,7 @@
     }
 
     function guardarConfig() {
-      state.config.gasPrice = parseFloat(document.getElementById('cfg-gas-price').value) || 24;
+      state.config.gasPrice = parseFloat(document.getElementById('cfg-gas-price').value) || 23.75;
       state.config.kml = parseFloat(document.getElementById('cfg-kml').value) || 20;
       state.config.maintPerKm = parseFloat(document.getElementById('cfg-maint-km').value) || 0.90;
       state.config.commPct = parseFloat(document.getElementById('cfg-comm-pct').value) || 45;
@@ -1637,14 +1671,6 @@
           </div>
         `).join('');
       }
-    }
-
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js')
-          .then(() => console.log('Service Worker Offline registrado'))
-          .catch(err => console.error('Error SW:', err));
-      });
     }
 
     cargarEstado();
