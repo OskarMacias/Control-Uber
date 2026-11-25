@@ -241,6 +241,7 @@
 
     input:focus, select:focus { border-color: var(--emerald); }
     .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
 
     .vault-grid {
       display: grid;
@@ -382,7 +383,7 @@
 
   <main class="app-container">
 
-    <!-- COLUMNA 1: EN RUTA (1-TOQUE) -->
+    <!-- COLUMNA 1: EN RUTA (1-TOQUE) + REGISTRO MANUAL -->
     <section id="sec-ruta" class="tab-section active">
       <div id="sim-panel" class="card hidden" style="border-color: var(--blue);">
         <div class="card-header">
@@ -397,7 +398,7 @@
 
       <div class="card">
         <div class="card-header">
-          <span class="card-title">Estado de Operación</span>
+          <span class="card-title">Estado de Operación (En Vivo)</span>
           <span class="badge-phase" id="phase-badge">EN BASE (LISTO)</span>
         </div>
 
@@ -416,9 +417,9 @@
           </div>
         </div>
 
-        <!-- BOTÓN DE CORRECCIÓN MANUAL DE KILÓMETROS DEL TRAMO -->
-        <button id="btn-edit-leg-km" class="btn-edit-leg hidden" onclick="editarKmTramoActual()">
-          <span>✎ Ajustar km del tramo actual (si falló GPS)</span>
+        <!-- BOTÓN DE CORRECCIÓN MANUAL DE KM Y TIEMPO DEL TRAMO -->
+        <button id="btn-edit-leg-km" class="btn-edit-leg hidden" onclick="editarTramoEnVivo()">
+          <span>✎ Ajustar km y tiempo del tramo actual</span>
         </button>
 
         <div id="cycle-summary" class="hidden" style="background:var(--bg-input); padding:10px; border-radius:10px; font-size:12px; margin-bottom:12px; border:1px solid var(--border);">
@@ -543,6 +544,42 @@
             <span class="btn-sub">Transfiere costo/km desde tu comisión al auto</span>
           </button>
         </div>
+      </div>
+
+      <!-- TARJETA NUEVA: REGISTRO MANUAL DIRECTO (SIN CRONÓMETRO / EN FRÍO) -->
+      <div class="card" style="border-color: rgba(59, 130, 246, 0.4);">
+        <div class="card-header">
+          <span class="card-title" style="color:#93c5fd;">✍️ Registro Manual Directo (Sin GPS)</span>
+        </div>
+        <div class="form-group">
+          <label>Tipo de Movimiento</label>
+          <select id="man-type">
+            <option value="TRASLADO">🚚 Traslado Vacío Operativo (Ej. Gasolinera → Base $0)</option>
+            <option value="SERVICIO">🚕 Servicio con Cliente Cobrado</option>
+            <option value="PERSONAL">🟣 Vuelta Personal (Descuenta costo a tu comisión)</option>
+          </select>
+        </div>
+        <div class="row-3">
+          <div class="form-group">
+            <label>Km Reales</label>
+            <input type="number" id="man-km" placeholder="Ej. 12" step="0.1">
+          </div>
+          <div class="form-group">
+            <label>Minutos</label>
+            <input type="number" id="man-mins" placeholder="Ej. 15">
+          </div>
+          <div class="form-group">
+            <label>Cobro ($)</label>
+            <input type="number" id="man-fare" value="0" placeholder="0">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Nota / Ruta (Opcional)</label>
+          <input type="text" id="man-note" placeholder="Ej. Regreso de El 10 a Villa Juárez">
+        </div>
+        <button class="btn-action bg-blue" style="padding:12px; font-size:14px; margin-bottom:0;" onclick="guardarRegistroManual()">
+          💾 Guardar Kilómetros y Repartir en Cajas
+        </button>
       </div>
     </section>
 
@@ -844,6 +881,73 @@
       }
     }
 
+    // GUARDAR REGISTRO MANUAL DIRECTO (SIN CRONÓMETRO)
+    function guardarRegistroManual() {
+      const tipo = document.getElementById('man-type').value;
+      const km = parseFloat(document.getElementById('man-km').value);
+      const mins = parseInt(document.getElementById('man-mins').value) || 0;
+      const fareRaw = document.getElementById('man-fare').value.trim();
+      const fare = fareRaw === '' ? 0 : parseFloat(fareRaw);
+      const nota = document.getElementById('man-note').value.trim();
+
+      if (isNaN(km) || km <= 0) {
+        alert('Ingresa los kilómetros recorridos (mayor a 0).');
+        return;
+      }
+      if (isNaN(fare) || fare < 0) {
+        alert('Ingresa un cobro válido (0 o mayor).');
+        return;
+      }
+
+      const odoInicio = state.odometer;
+      state.odometer += km;
+
+      const gasCost = km * (state.config.gasPrice / state.config.kml);
+      const maintCost = km * state.config.maintPerKm;
+      const totalAutoCost = gasCost + maintCost;
+
+      let comm = 0;
+      let credit = 0;
+      let label = '';
+
+      if (tipo === 'PERSONAL') {
+        comm = -totalAutoCost;
+        label = `🟣 Vuelta Personal Manual (${mins} min)${nota ? ' - ' + nota : ''}`;
+      } else {
+        const netFree = Math.max(0, fare - totalAutoCost);
+        comm = netFree * (state.config.commPct / 100);
+        credit = netFree - comm;
+        label = tipo === 'TRASLADO'
+          ? `🚚 Traslado Vacío Manual (${mins} min)${nota ? ' - ' + nota : ''}`
+          : `🚕 Servicio Manual (${mins} min)${nota ? ' - ' + nota : ''}`;
+      }
+
+      state.vaults.gas += gasCost;
+      state.vaults.maint += maintCost;
+      state.vaults.comm += comm;
+      state.vaults.credit += credit;
+
+      state.history.unshift({
+        date: new Date().toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' }),
+        type: label,
+        km: km.toFixed(2),
+        odoRange: `${odoInicio.toFixed(1)} → ${state.odometer.toFixed(1)}`,
+        charged: fare.toFixed(2),
+        gas: gasCost.toFixed(2),
+        maint: maintCost.toFixed(2),
+        comm: comm.toFixed(2),
+        credit: credit.toFixed(2)
+      });
+
+      document.getElementById('man-km').value = '';
+      document.getElementById('man-mins').value = '';
+      document.getElementById('man-fare').value = '0';
+      document.getElementById('man-note').value = '';
+
+      guardarEstado();
+      alert(`¡Listo! Se registraron ${km} km y se actualizó el odómetro a ${state.odometer.toFixed(1)} km.`);
+    }
+
     function obtenerMetaMensualActual() {
       const l = state.loans;
       const p1Activo = l.loan1PaidMonths < l.loan1TotalMonths;
@@ -913,33 +1017,39 @@
       }
     }
 
-    // CORRECCIÓN MANUAL DE KILÓMETROS DEL TRAMO ACTUAL (ANTI-FALLO GPS)
-    function editarKmTramoActual() {
-      if (live.phase === 'IDLE' || live.phase === 'POST_DROP' || live.phase === 'WAITING') {
-        alert('Inicia un tramo en movimiento para ajustar su distancia.');
+    // CORRECCIÓN MANUAL DE KILÓMETROS Y TIEMPO DEL TRAMO EN VIVO
+    function editarTramoEnVivo() {
+      if (live.phase === 'IDLE' || live.phase === 'POST_DROP') {
+        alert('Inicia un tramo en movimiento para ajustar su distancia y tiempo.');
         return;
       }
-      const nuevoVal = prompt(
-        `El GPS/app registra ${live.kmCurrentLeg.toFixed(2)} km en este tramo.\nIngresa los kilómetros reales según el tablero de tu Corolla:`,
+      const nuevoKm = prompt(
+        `Distancia actual del tramo: ${live.kmCurrentLeg.toFixed(2)} km.\nIngresa los kilómetros reales según tu tablero:`,
         live.kmCurrentLeg.toFixed(1)
       );
-      if (nuevoVal === null) return;
-      const parsed = parseFloat(nuevoVal);
-      if (isNaN(parsed) || parsed < 0) {
-        alert('Ingresa un número válido de kilómetros.');
-        return;
+      if (nuevoKm !== null) {
+        const parsedKm = parseFloat(nuevoKm);
+        if (!isNaN(parsedKm) && parsedKm >= 0) {
+          const diferencia = parsedKm - live.kmCurrentLeg;
+          live.kmCurrentLeg = parsedKm;
+          state.odometer = Math.max(0, state.odometer + diferencia);
+
+          if (live.phase === 'PICKUP') live.kmAB = Math.max(0, live.kmAB + diferencia);
+          else if (live.phase === 'TRIP' || live.phase === 'RETURN_CLIENT') live.kmBC = Math.max(0, live.kmBC + diferencia);
+          else if (live.phase === 'RETURNING' || live.phase === 'PERSONAL') live.kmCA = Math.max(0, live.kmCA + diferencia);
+        }
       }
 
-      const diferencia = parsed - live.kmCurrentLeg;
-      live.kmCurrentLeg = parsed;
-      state.odometer = Math.max(0, state.odometer + diferencia);
-
-      if (live.phase === 'PICKUP') {
-        live.kmAB = Math.max(0, live.kmAB + diferencia);
-      } else if (live.phase === 'TRIP' || live.phase === 'RETURN_CLIENT') {
-        live.kmBC = Math.max(0, live.kmBC + diferencia);
-      } else if (live.phase === 'RETURNING' || live.phase === 'PERSONAL') {
-        live.kmCA = Math.max(0, live.kmCA + diferencia);
+      const minsActuales = Math.round(live.secondsTotal / 60);
+      const nuevoMin = prompt(
+        `Tiempo acumulado: ${minsActuales} minutos.\nIngresa los minutos reales del recorrido (o deja igual):`,
+        minsActuales
+      );
+      if (nuevoMin !== null) {
+        const parsedMin = parseInt(nuevoMin);
+        if (!isNaN(parsedMin) && parsedMin >= 0) {
+          live.secondsTotal = parsedMin * 60;
+        }
       }
 
       document.getElementById('odo-val').textContent = state.odometer.toLocaleString('es-MX', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
@@ -1054,7 +1164,7 @@
       document.getElementById(map[newPhase]).classList.remove('hidden');
       document.getElementById('cycle-summary').classList.toggle('hidden', newPhase === 'IDLE' || newPhase === 'PERSONAL');
 
-      const editablePhases = ['PICKUP', 'TRIP', 'RETURN_CLIENT', 'RETURNING', 'PERSONAL'];
+      const editablePhases = ['PICKUP', 'TRIP', 'WAITING', 'RETURN_CLIENT', 'RETURNING', 'PERSONAL'];
       document.getElementById('btn-edit-leg-km').classList.toggle('hidden', !editablePhases.includes(newPhase));
 
       actualizarTelemetriaUI();
@@ -1067,7 +1177,6 @@
       setPhase('PICKUP', 'YENDO POR CLIENTE (A → B)');
     }
 
-    // NUEVO: TRASLADO OPERATIVO SIN COBRO ($0)
     function iniciarTrasladoOperativo() {
       live.kmAB = 0; live.kmBC = 0; live.kmCA = 0;
       live.secondsTotal = 0; live.waitSeconds = 0;
