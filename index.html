@@ -380,6 +380,8 @@
       border-radius: 18px;
       padding: 18px;
       box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+      max-height: 90vh;
+      overflow-y: auto;
     }
 
     .modal-title {
@@ -584,7 +586,7 @@
         </div>
       </div>
 
-      <!-- TARJETA NUEVA: TU GANANCIA LIBRE (HOY Y SEMANA LUNES-DOMINGO) -->
+      <!-- TARJETA: TU GANANCIA LIBRE (HOY Y SEMANA LUNES-DOMINGO) -->
       <div class="card">
         <div class="card-header">
           <span class="card-title">👨‍✈️ Tu Ganancia Libre (Dinero Tuyo)</span>
@@ -726,16 +728,16 @@
           </button>
         </div>
 
-        <!-- Historial y Exportación -->
+        <!-- Historial y Exportación con Edición Individual -->
         <div class="card">
           <div class="card-header">
-            <span class="card-title">Bitácora Reciente</span>
+            <span class="card-title">Bitácora Reciente (Toca ✏️ para editar)</span>
             <div style="display:flex; gap:6px;">
               <button class="mini-btn bg-blue" onclick="exportarCSV()">📥 CSV</button>
               <button class="mini-btn bg-red" onclick="reiniciarTodo()">🗑️ Reset</button>
             </div>
           </div>
-          <div id="history-list" style="max-height:280px; overflow-y:auto;">
+          <div id="history-list" style="max-height:340px; overflow-y:auto;">
             <div style="color:var(--text-muted); font-size:12px;">Sin movimientos registrados aún.</div>
           </div>
         </div>
@@ -743,7 +745,7 @@
 
       <!-- SECCIÓN 3: TARIFAS BIDIRECCIONALES Y AJUSTES NUBE -->
       <section id="sec-tarifas" class="tab-section">
-        <div class="card">
+        <div class="card" id="card-tarifas-form">
           <div class="card-header">
             <span class="card-title">Tarifas Fijas Bidireccionales (↔)</span>
           </div>
@@ -762,9 +764,14 @@
               <input type="number" id="route-price" placeholder="300">
             </div>
           </div>
-          <button class="btn-action bg-emerald" style="padding:11px; font-size:14px;" id="btn-save-route" onclick="guardarTarifa()">
-            + Guardar Tarifa Fija
-          </button>
+          <div style="display:flex; gap:8px;">
+            <button class="btn-action bg-emerald" style="padding:11px; font-size:14px; margin-bottom:0;" id="btn-save-route" onclick="guardarTarifa()">
+              + Guardar Tarifa Fija
+            </button>
+            <button class="btn-action bg-slate hidden" style="padding:11px; font-size:14px; margin-bottom:0; width:45%;" id="btn-cancel-route" onclick="cancelarEdicionTarifa()">
+              Cancelar
+            </button>
+          </div>
           <div id="routes-list" style="margin-top:12px;"></div>
         </div>
 
@@ -842,6 +849,45 @@
       <div class="modal-btns">
         <button class="btn-action bg-slate" style="padding:12px; font-size:14px; margin:0;" onclick="cerrarModal()">Cancelar</button>
         <button class="btn-action bg-emerald" style="padding:12px; font-size:14px; margin:0;" onclick="confirmarModal()">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL DE EDICIÓN DE MOVIMIENTO EN BITÁCORA -->
+  <div id="edit-log-modal" class="modal-backdrop hidden">
+    <div class="modal-box">
+      <div class="modal-title">✏️ Editar Movimiento Guardado</div>
+      <div class="modal-desc">Corrige el cobro, los kilómetros o el concepto. Las 4 cajas se ajustarán automáticamente.</div>
+      <input type="hidden" id="edit-log-index" value="-1">
+
+      <div class="form-group">
+        <label>Descripción / Tipo de Movimiento</label>
+        <input type="text" id="edit-log-type">
+      </div>
+
+      <div class="row-2">
+        <div class="form-group">
+          <label id="edit-log-charged-label">Monto Cobrado ($)</label>
+          <input type="number" id="edit-log-charged" step="0.01" inputmode="decimal" oninput="previsualizarEdicionLog()">
+        </div>
+        <div class="form-group">
+          <label>Kilómetros (km)</label>
+          <input type="number" id="edit-log-km" step="0.01" inputmode="decimal" oninput="previsualizarEdicionLog()">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Rango Odómetro (Ej. 53790.0 → 53860.0)</label>
+        <input type="text" id="edit-log-odo">
+      </div>
+
+      <div class="modal-calc-hint" id="edit-log-preview">
+        Vista previa del reparto...
+      </div>
+
+      <div class="modal-btns">
+        <button class="btn-action bg-slate" style="padding:12px; font-size:14px; margin:0;" onclick="cerrarModalEdicionLog()">Cancelar</button>
+        <button class="btn-action bg-emerald" style="padding:12px; font-size:14px; margin:0;" onclick="guardarEdicionLog()">Guardar Cambios</button>
       </div>
     </div>
   </div>
@@ -1031,7 +1077,6 @@
       }
     }
 
-    // PARSEO DE FECHA PARA CÁLCULO EXACTO DE HOY Y SEMANA (LUNES A DOMINGO)
     function obtenerFechaMovimiento(item) {
       if (item.timestamp && typeof item.timestamp === 'number') {
         return new Date(item.timestamp);
@@ -1053,7 +1098,6 @@
       const ahora = new Date();
       const inicioHoy = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate(), 0, 0, 0, 0);
 
-      // Lunes de la semana actual (getDay(): 0 = Domingo, 1 = Lunes ... 6 = Sábado)
       const diaSemana = ahora.getDay();
       const diffLunes = diaSemana === 0 ? -6 : 1 - diaSemana;
       const inicioLunes = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate() + diffLunes, 0, 0, 0, 0);
@@ -1533,6 +1577,176 @@
       }
     }
 
+    // EDICIÓN Y ELIMINACIÓN DE REGISTROS INDIVIDUALES EN BITÁCORA
+    function abrirModalEdicionLog(idx) {
+      const item = state.history[idx];
+      if (!item) return;
+
+      document.getElementById('edit-log-index').value = idx;
+      document.getElementById('edit-log-type').value = item.type;
+      document.getElementById('edit-log-km').value = parseFloat(item.km) || 0;
+      document.getElementById('edit-log-odo').value = item.odoRange || '';
+
+      const esGasolina = String(item.type).includes('⛽') || (parseFloat(item.gas) < 0 && parseFloat(item.charged) === 0);
+      const esTaller = String(item.type).includes('🔧') || (parseFloat(item.maint) < 0 && parseFloat(item.charged) === 0);
+
+      if (esGasolina) {
+        document.getElementById('edit-log-charged-label').textContent = 'Pesos Pagados Gasolina ($)';
+        document.getElementById('edit-log-charged').value = Math.abs(parseFloat(item.gas) || 0);
+      } else if (esTaller) {
+        document.getElementById('edit-log-charged-label').textContent = 'Gasto Taller ($)';
+        document.getElementById('edit-log-charged').value = Math.abs(parseFloat(item.maint) || 0);
+      } else {
+        document.getElementById('edit-log-charged-label').textContent = 'Monto Cobrado ($)';
+        document.getElementById('edit-log-charged').value = parseFloat(item.charged) || 0;
+      }
+
+      document.getElementById('edit-log-modal').classList.remove('hidden');
+      previsualizarEdicionLog();
+    }
+
+    function cerrarModalEdicionLog() {
+      document.getElementById('edit-log-modal').classList.add('hidden');
+    }
+
+    function calcularRepartoMovimiento(item, nuevoTipo, nuevoMonto, nuevosKm) {
+      const esVueltaPersonal = String(nuevoTipo).includes('Vuelta Personal') || String(nuevoTipo).includes('🟣');
+      const esGasolina = String(nuevoTipo).includes('⛽') || (parseFloat(item.gas) < 0 && parseFloat(item.charged) === 0);
+      const esTaller = String(nuevoTipo).includes('🔧') || (parseFloat(item.maint) < 0 && parseFloat(item.charged) === 0);
+      const esPagoCredito = String(nuevoTipo).includes('🏦 Pago Mensualidad');
+
+      if (esPagoCredito) {
+        return {
+          charged: '0.00',
+          gas: '0.00',
+          maint: '0.00',
+          comm: '0.00',
+          credit: item.credit
+        };
+      }
+
+      if (esGasolina) {
+        return {
+          charged: '0.00',
+          gas: (-Math.abs(nuevoMonto)).toFixed(2),
+          maint: '0.00',
+          comm: '0.00',
+          credit: '0.00'
+        };
+      }
+
+      if (esTaller) {
+        return {
+          charged: '0.00',
+          gas: '0.00',
+          maint: (-Math.abs(nuevoMonto)).toFixed(2),
+          comm: '0.00',
+          credit: '0.00'
+        };
+      }
+
+      const gasCost = nuevosKm * (state.config.gasPrice / state.config.kml);
+      const maintCost = nuevosKm * state.config.maintPerKm;
+
+      if (esVueltaPersonal) {
+        const totalDiscount = gasCost + maintCost;
+        return {
+          charged: '0.00',
+          gas: gasCost.toFixed(2),
+          maint: maintCost.toFixed(2),
+          comm: (-totalDiscount).toFixed(2),
+          credit: '0.00'
+        };
+      }
+
+      const netFree = Math.max(0, nuevoMonto - gasCost - maintCost);
+      const comm = netFree * (state.config.commPct / 100);
+      const credit = netFree - comm;
+
+      return {
+        charged: nuevoMonto.toFixed(2),
+        gas: gasCost.toFixed(2),
+        maint: maintCost.toFixed(2),
+        comm: comm.toFixed(2),
+        credit: credit.toFixed(2)
+      };
+    }
+
+    function previsualizarEdicionLog() {
+      const idx = parseInt(document.getElementById('edit-log-index').value);
+      const item = state.history[idx];
+      if (!item) return;
+
+      const nuevoTipo = document.getElementById('edit-log-type').value;
+      const nuevoMonto = parseFloat(document.getElementById('edit-log-charged').value) || 0;
+      const nuevosKm = parseFloat(document.getElementById('edit-log-km').value) || 0;
+
+      const calc = calcularRepartoMovimiento(item, nuevoTipo, nuevoMonto, nuevosKm);
+      document.getElementById('edit-log-preview').innerHTML = `
+        Nuevo reparto: ⛽ $${calc.gas} | 🔧 $${calc.maint}<br>
+        👨‍✈️ Comisión: <strong>$${calc.comm}</strong> | 🏦 Crédito: <strong>$${calc.credit}</strong>
+      `;
+    }
+
+    function guardarEdicionLog() {
+      const idx = parseInt(document.getElementById('edit-log-index').value);
+      const item = state.history[idx];
+      if (!item) return;
+
+      const nuevoTipo = document.getElementById('edit-log-type').value.trim() || item.type;
+      const nuevoMonto = parseFloat(document.getElementById('edit-log-charged').value);
+      const nuevosKm = parseFloat(document.getElementById('edit-log-km').value);
+      const nuevoOdo = document.getElementById('edit-log-odo').value.trim();
+
+      if (isNaN(nuevoMonto) || nuevoMonto < 0 || isNaN(nuevosKm) || nuevosKm < 0) {
+        alert('Ingresa valores válidos mayores o iguales a 0.');
+        return;
+      }
+
+      // 1. Revertir impacto anterior en las 4 cajas
+      state.vaults.gas -= (parseFloat(item.gas) || 0);
+      state.vaults.maint -= (parseFloat(item.maint) || 0);
+      state.vaults.comm -= (parseFloat(item.comm) || 0);
+      state.vaults.credit -= (parseFloat(item.credit) || 0);
+
+      // 2. Calcular nuevo reparto y aplicarlo
+      const nuevoReparto = calcularRepartoMovimiento(item, nuevoTipo, nuevoMonto, nuevosKm);
+      state.vaults.gas += parseFloat(nuevoReparto.gas);
+      state.vaults.maint += parseFloat(nuevoReparto.maint);
+      state.vaults.comm += parseFloat(nuevoReparto.comm);
+      state.vaults.credit += parseFloat(nuevoReparto.credit);
+
+      // 3. Actualizar registro en bitácora
+      state.history[idx] = {
+        ...item,
+        type: nuevoTipo,
+        km: nuevosKm.toFixed(2),
+        odoRange: nuevoOdo,
+        charged: nuevoReparto.charged,
+        gas: nuevoReparto.gas,
+        maint: nuevoReparto.maint,
+        comm: nuevoReparto.comm,
+        credit: nuevoReparto.credit
+      };
+
+      cerrarModalEdicionLog();
+      guardarEstado();
+    }
+
+    function eliminarRegistroBitacora(idx) {
+      const item = state.history[idx];
+      if (!item) return;
+      if (!confirm(`¿Eliminar este movimiento y revertir su saldo en las cajas?\n\n${item.type}`)) return;
+
+      state.vaults.gas -= (parseFloat(item.gas) || 0);
+      state.vaults.maint -= (parseFloat(item.maint) || 0);
+      state.vaults.comm -= (parseFloat(item.comm) || 0);
+      state.vaults.credit -= (parseFloat(item.credit) || 0);
+
+      state.history.splice(idx, 1);
+      guardarEstado();
+    }
+
     function actualizarResumenTramosUI() {
       document.getElementById('card-odo-last').textContent = live.odoLastMark.toLocaleString('es-MX', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
       document.getElementById('sum-odo-start').textContent = live.odoStart.toLocaleString('es-MX', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' km';
@@ -1719,15 +1933,14 @@
 
       if (idx >= 0) {
         state.routes[idx] = { name, km, price };
-        document.getElementById('edit-route-index').value = '-1';
-        document.getElementById('btn-save-route').textContent = '+ Guardar Tarifa Fija';
+        cancelarEdicionTarifa();
       } else {
         state.routes.push({ name, km, price });
+        document.getElementById('route-name').value = '';
+        document.getElementById('route-km').value = '';
+        document.getElementById('route-price').value = '';
       }
 
-      document.getElementById('route-name').value = '';
-      document.getElementById('route-km').value = '';
-      document.getElementById('route-price').value = '';
       guardarEstado();
     }
 
@@ -1738,6 +1951,18 @@
       document.getElementById('route-price').value = r.price;
       document.getElementById('edit-route-index').value = idx;
       document.getElementById('btn-save-route').textContent = '💾 Actualizar Tarifa';
+      document.getElementById('btn-cancel-route').classList.remove('hidden');
+      document.getElementById('card-tarifas-form').scrollIntoView({ behavior: 'smooth' });
+      document.getElementById('route-price').focus();
+    }
+
+    function cancelarEdicionTarifa() {
+      document.getElementById('route-name').value = '';
+      document.getElementById('route-km').value = '';
+      document.getElementById('route-price').value = '';
+      document.getElementById('edit-route-index').value = '-1';
+      document.getElementById('btn-save-route').textContent = '+ Guardar Tarifa Fija';
+      document.getElementById('btn-cancel-route').classList.add('hidden');
     }
 
     function eliminarTarifa(idx) {
@@ -1875,7 +2100,6 @@
       document.getElementById('fuel-odo').value = state.odometer.toFixed(1);
       actualizarResumenTramosUI();
 
-      // Actualizar tarjeta de Ganancia de Hoy y Semana (Lunes a Domingo)
       const { gananciaHoy, viajesHoy, gananciaSemana, viajesSemana, rangoSemanaTexto } = calcularGananciasDiaYSemana();
       document.getElementById('week-range-badge').textContent = rangoSemanaTexto;
       document.getElementById('earn-today').textContent = '$' + gananciaHoy.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -1939,13 +2163,17 @@
       if (state.history.length === 0) {
         hList.innerHTML = '<div style="color:var(--text-muted); font-size:12px;">Sin movimientos registrados aún.</div>';
       } else {
-        hList.innerHTML = state.history.map(h => `
+        hList.innerHTML = state.history.map((h, idx) => `
           <div class="log-item">
-            <div style="display:flex; justify-content:space-between;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
               <strong>${h.type}</strong>
-              <span style="color:var(--emerald); font-weight:700;">$${h.charged}</span>
+              <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
+                <span style="color:var(--emerald); font-weight:700;">$${h.charged}</span>
+                <button class="mini-btn bg-blue" style="padding:3px 7px; font-size:11px;" onclick="abrirModalEdicionLog(${idx})" title="Editar registro">✏️</button>
+                <button class="mini-btn bg-red" style="padding:3px 7px; font-size:11px;" onclick="eliminarRegistroBitacora(${idx})" title="Eliminar registro">🗑️</button>
+              </div>
             </div>
-            <div style="font-size:11px; color:var(--text-muted); margin:2px 0;">
+            <div style="font-size:11px; color:var(--text-muted); margin:3px 0;">
               ${h.date} • ${h.km} km (ODO: ${h.odoRange})
             </div>
             <div style="font-size:11px;">
