@@ -100,14 +100,9 @@
       gap: 4px;
     }
 
-    .pill-btn.active-ble {
-      border-color: var(--blue);
-      color: #93c5fd;
-      background: rgba(59, 130, 246, 0.15);
-    }
-
     .pill-btn.online { border-color: var(--emerald); color: #6ee7b7; }
     .pill-btn.offline { border-color: var(--amber); color: #fcd34d; }
+    .pill-btn.pending { border-color: var(--blue); color: #93c5fd; }
 
     .app-container {
       max-width: 480px;
@@ -162,11 +157,11 @@
       color: var(--text-muted);
     }
 
-    .telemetry-grid {
+    .odo-strip {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: 1fr 1fr;
       gap: 8px;
-      margin-bottom: 10px;
+      margin-bottom: 12px;
     }
 
     .tele-box {
@@ -174,28 +169,11 @@
       border-radius: 12px;
       padding: 10px 8px;
       text-align: center;
-      border: 1px solid rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.06);
     }
 
     .tele-label { font-size: 11px; color: var(--text-muted); margin-bottom: 4px; }
     .tele-val { font-size: 17px; font-weight: 800; color: var(--text-main); }
-
-    .btn-edit-leg {
-      width: 100%;
-      background: rgba(59, 130, 246, 0.16);
-      border: 1px dashed var(--blue);
-      color: #93c5fd;
-      border-radius: 10px;
-      padding: 10px 12px;
-      font-size: 12px;
-      font-weight: 700;
-      cursor: pointer;
-      margin-bottom: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-    }
 
     .btn-action {
       width: 100%;
@@ -216,7 +194,7 @@
     }
 
     .btn-action:active { transform: scale(0.98); }
-    .btn-sub { font-size: 12px; font-weight: 500; opacity: 0.9; }
+    .btn-sub { font-size: 12px; font-weight: 500; opacity: 0.92; }
 
     .bg-emerald { background: linear-gradient(135deg, #059669, #10b981); }
     .bg-blue { background: linear-gradient(135deg, #2563eb, #3b82f6); }
@@ -241,7 +219,6 @@
 
     input:focus, select:focus { border-color: var(--emerald); }
     .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
 
     .vault-grid {
       display: grid;
@@ -353,6 +330,58 @@
     }
 
     .hidden { display: none !important; }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(2, 6, 23, 0.85);
+      backdrop-filter: blur(4px);
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    .modal-box {
+      width: 100%;
+      max-width: 400px;
+      background: #111827;
+      border: 1px solid #4b5563;
+      border-radius: 18px;
+      padding: 18px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+    }
+
+    .modal-title {
+      font-size: 17px;
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 6px;
+    }
+
+    .modal-desc {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 14px;
+      line-height: 1.4;
+    }
+
+    .modal-calc-hint {
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      border-radius: 10px;
+      padding: 9px 11px;
+      font-size: 12px;
+      color: #6ee7b7;
+      margin-bottom: 14px;
+    }
+
+    .modal-btns {
+      display: grid;
+      grid-template-columns: 1fr 1.4fr;
+      gap: 10px;
+    }
   </style>
 </head>
 <body>
@@ -370,70 +399,49 @@
       <div>
         <div class="brand-title">COROLLA HEV • 2022</div>
         <div style="font-size:11px; color:var(--text-muted);" id="odo-display" onclick="calibrarOdometro()">
-          Odo: <strong id="odo-val" style="color:#fff;">53,624.0</strong> km ✎
+          ODO Tablero: <strong id="odo-val" style="color:#fff;">53,624.0</strong> km ✎
         </div>
       </div>
     </div>
     <div class="status-row">
-      <button class="pill-btn" id="btn-ble" onclick="conectarOBD2()">🔌 OBD2</button>
-      <button class="pill-btn" id="btn-sim-toggle" onclick="toggleSimulador()">🎛️ Sim</button>
-      <span class="pill-btn online" id="net-status">🟢 Online</span>
+      <span class="pill-btn online" id="net-status" onclick="sincronizarFirebase(true)">🟢 Online</span>
     </div>
   </header>
 
   <main class="app-container">
 
-    <!-- COLUMNA 1: EN RUTA (1-TOQUE) + REGISTRO POR ODÓMETRO GENERAL -->
+    <!-- COLUMNA 1: CONTROL POR SELLOS DE ODÓMETRO REAL -->
     <section id="sec-ruta" class="tab-section active">
-      <div id="sim-panel" class="card hidden" style="border-color: var(--blue);">
-        <div class="card-header">
-          <span class="card-title" style="color:#93c5fd;">Simulador de Movimiento en Vivo</span>
-          <strong id="sim-speed-label">0 km/h</strong>
-        </div>
-        <input type="range" id="sim-speed" min="0" max="120" value="0" oninput="actualizarVelocidadSim(this.value)">
-        <div style="font-size:11px; color:var(--text-muted); margin-top:6px;">
-          Mueve el control para simular avance real de odómetro y tiempo sin GPS/OBD2.
-        </div>
-      </div>
-
       <div class="card">
         <div class="card-header">
-          <span class="card-title">Estado de Operación (En Vivo)</span>
+          <span class="card-title">Control por Odómetro (ODO)</span>
           <span class="badge-phase" id="phase-badge">EN BASE (LISTO)</span>
         </div>
 
-        <div class="telemetry-grid">
+        <div class="odo-strip">
           <div class="tele-box">
-            <div class="tele-label">Tramo Actual</div>
-            <div class="tele-val" id="live-km">0.00 km</div>
+            <div class="tele-label">Último ODO Sellado</div>
+            <div class="tele-val" id="card-odo-last" style="color:#93c5fd;">53,624.0</div>
           </div>
           <div class="tele-box">
-            <div class="tele-label">Tiempo</div>
+            <div class="tele-label">Tiempo en Curso</div>
             <div class="tele-val" id="live-time">00:00</div>
-          </div>
-          <div class="tele-box">
-            <div class="tele-label">Velocidad</div>
-            <div class="tele-val" id="live-speed">0 km/h</div>
           </div>
         </div>
 
-        <!-- BOTÓN PARA PONER EL ODÓMETRO TOTAL DEL TABLERO EN CUALQUIER MOMENTO -->
-        <button id="btn-edit-leg-km" class="btn-edit-leg hidden" onclick="ajustarConOdometroTotal()">
-          <span>🔢 Poner Odómetro Total del Tablero (ODO) y Tiempo</span>
-        </button>
-
-        <div id="cycle-summary" class="hidden" style="background:var(--bg-input); padding:10px; border-radius:10px; font-size:12px; margin-bottom:12px; border:1px solid var(--border);">
-          <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
-            <span style="color:var(--text-muted);">ODO Inicial del Servicio:</span>
-            <strong id="sum-odo-start" style="color:#93c5fd;">53,624.0 km</strong>
+        <!-- RESUMEN DE TRAMOS SELLADOS -->
+        <div id="cycle-summary" class="hidden" style="background:var(--bg-input); padding:11px; border-radius:12px; font-size:12px; margin-bottom:12px; border:1px solid var(--border);">
+          <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+            <span style="color:var(--text-muted);">ODO Salida Base:</span>
+            <strong id="sum-odo-start" style="color:#fff;">53,624.0 km</strong>
           </div>
-          <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+          <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
             <span style="color:var(--text-muted);">Acercamiento (A → B):</span>
-            <strong id="sum-ab">0.00 km</strong>
+            <strong id="sum-ab">Pendiente...</strong>
           </div>
-          <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+          <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
             <span style="color:var(--text-muted);">Con Cliente (B → C):</span>
-            <strong id="sum-bc" style="color:var(--emerald);">0.00 km</strong>
+            <strong id="sum-bc" style="color:var(--emerald);">Pendiente...</strong>
           </div>
           <div style="display:flex; justify-content:space-between;">
             <span style="color:var(--text-muted);">Retorno / Extra:</span>
@@ -441,71 +449,64 @@
           </div>
         </div>
 
-        <!-- FASE 0: EN BASE -->
+        <!-- FASE 0: EN BASE (LISTO) -->
         <div id="controls-idle">
-          <button class="btn-action bg-emerald" onclick="iniciarAcercamiento()">
+          <button class="btn-action bg-emerald" onclick="accionIniciarAcercamiento()">
             <span>🟢 Salir de Base (Ir por Cliente)</span>
-            <span class="btn-sub">Sella odómetro e inicia conteo A → B</span>
+            <span class="btn-sub">Pide ODO actual al arrancar hacia el cliente</span>
           </button>
-          <button class="btn-action bg-blue" onclick="iniciarTrasladoOperativo()">
+          <button class="btn-action bg-blue" onclick="accionIniciarTrasladoVacio()">
             <span>🚚 Traslado Vacío a Base / Zona ($0)</span>
-            <span class="btn-sub">Suma km operativos al auto sin castigar tu comisión</span>
+            <span class="btn-sub">Mueve el auto sin cliente sin descontar tu comisión</span>
           </button>
-          <button class="btn-action bg-purple" onclick="iniciarVueltaPersonal()">
+          <button class="btn-action bg-purple" onclick="accionIniciarVueltaPersonal()">
             <span>🟣 Iniciar Vuelta Personal</span>
-            <span class="btn-sub">Sin comisión • Descuenta costo puro de tu bolsa</span>
+            <span class="btn-sub">Pide ODO al salir • Puedes interceptar viaje en camino</span>
           </button>
         </div>
 
-        <!-- FASE 1: ACERCAMIENTO (A -> B) -->
+        <!-- FASE 1: YENDO POR CLIENTE (A -> B) -->
         <div id="controls-pickup" class="hidden">
-          <button class="btn-action bg-blue" onclick="recogerCliente()">
-            <span>📍 Recogí al Cliente (Iniciar B → C)</span>
-            <span class="btn-sub">Congela km muertos e inicia viaje efectivo</span>
+          <button class="btn-action bg-blue" onclick="accionLleguePorCliente()">
+            <span>📍 Llegué por el Cliente (Iniciar Viaje)</span>
+            <span class="btn-sub">Pide ODO al recoger y arranca tramo con cliente</span>
           </button>
-          <button class="btn-action bg-slate" onclick="cerrarComoTrasladoVacio()">
+          <button class="btn-action bg-slate" onclick="accionCerrarAcercamientoComoVacio()">
             <span>🚚 Cerrar como Traslado Vacío ($0)</span>
-            <span class="btn-sub">Guarda los km recorridos sin cobrar cliente</span>
+            <span class="btn-sub">Si el cliente canceló o solo te moviste de zona</span>
           </button>
           <button class="btn-action bg-red" onclick="cancelarCiclo()">
-            <span>✖ Cancelar Servicio</span>
+            <span>✖ Cancelar sin Guardar</span>
           </button>
         </div>
 
-        <!-- FASE 2: CON CLIENTE (B -> C) -->
+        <!-- FASE 2: CON CLIENTE EN RUTA (B -> C) -->
         <div id="controls-trip" class="hidden">
-          <div class="form-group">
-            <label>Tarifa Fija Rápida o Cotización</label>
-            <select id="quick-route-select" onchange="aplicarTarifaRapida(this.value)">
-              <option value="">-- Seleccionar ruta o calcular por km --</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Monto a Cobrar al Cliente ($ MXN — pon 0 si fue traslado vacío)</label>
-            <input type="number" id="trip-fare-input" placeholder="Ej. 300 (o 0 si vienes vacío)" step="5">
-          </div>
-          <div id="live-commission-preview" style="background:rgba(16,185,129,0.1); border:1px solid var(--emerald); border-radius:10px; padding:10px; font-size:12px; margin-bottom:10px;">
-            Calculando reparto estimado...
-          </div>
-          <button class="btn-action bg-emerald" onclick="llegarDestino()">
-            <span>🏁 Llegué al Destino (Finalizar Tramo)</span>
-            <span class="btn-sub">Registra cobro (o $0) y elige retorno o espera</span>
+          <button class="btn-action bg-emerald" onclick="accionDejeCliente()">
+            <span>🏁 Dejé al Cliente</span>
+            <span class="btn-sub">Pide ODO al dejar y cuánto cobraste por el viaje</span>
+          </button>
+          <button class="btn-action bg-red" onclick="cancelarCiclo()">
+            <span>✖ Cancelar sin Guardar</span>
           </button>
         </div>
 
-        <!-- FASE 3: OPCIONES POST-DESTINO -->
+        <!-- FASE 3: OPCIONES AL DEJAR AL CLIENTE -->
         <div id="controls-post-drop" class="hidden">
+          <div style="background:rgba(16,185,129,0.1); border:1px solid var(--emerald); border-radius:10px; padding:10px; font-size:12px; margin-bottom:10px;" id="post-drop-info">
+            Cobro registrado: $0.00
+          </div>
           <button class="btn-action bg-amber" onclick="iniciarEsperaRedondo()">
             <span>⏳ Esperar Cliente (Viaje Redondo)</span>
-            <span class="btn-sub">Cobra $2.50/min espera + 50% tarifa de regreso</span>
+            <span class="btn-sub">Suma $2.50/min espera + 50% tarifa de regreso</span>
           </button>
           <button class="btn-action bg-blue" onclick="iniciarRetornoBase()">
             <span>🏠 Regresar Vacío a Base</span>
-            <span class="btn-sub">Suma km de vuelta al costo del servicio</span>
+            <span class="btn-sub">Continúa abierto hasta que llegues o interceptes viaje</span>
           </button>
           <button class="btn-action bg-emerald" onclick="quedarEnZona()">
             <span>📍 Quedarme en Zona / Base (Cerrar aquí)</span>
-            <span class="btn-sub">Cierra el recorrido actual y guarda en bitácora</span>
+            <span class="btn-sub">Cierra el viaje con este ODO y reparte en tus cajas</span>
           </button>
         </div>
 
@@ -517,88 +518,41 @@
           </div>
           <button class="btn-action bg-emerald" onclick="iniciarRegresoCliente()">
             <span>🔄 Iniciar Regreso con Cliente (50% tarifa)</span>
-            <span class="btn-sub">Suma espera + mitad de tarifa de vuelta</span>
+            <span class="btn-sub">Parte desde este mismo ODO de regreso</span>
           </button>
         </div>
 
-        <!-- FASE 5: REGRESO CON CLIENTE -->
+        <!-- FASE 5: REGRESO CON CLIENTE (VIAJE REDONDO) -->
         <div id="controls-return-client" class="hidden">
-          <button class="btn-action bg-emerald" onclick="finalizarViajeRedondo()">
-            <span>🏁 Finalizar Viaje Redondo y Cerrar</span>
-            <span class="btn-sub">Reparte el total en tus 4 bóvedas</span>
+          <button class="btn-action bg-emerald" onclick="accionFinalizarViajeRedondo()">
+            <span>🏁 Dejé al Cliente (Finalizar Viaje Redondo)</span>
+            <span class="btn-sub">Pide ODO final, suma espera + regreso y reparte</span>
           </button>
         </div>
 
         <!-- FASE 6: REGRESANDO VACÍO A BASE -->
         <div id="controls-returning" class="hidden">
-          <button class="btn-action bg-amber" onclick="interceptarNuevoServicio()">
-            <span>🔄 Interceptar / Ir por Otro Cliente</span>
-            <span class="btn-sub">Cierra ciclo aquí e inicia acercamiento a nuevo pasaje</span>
+          <button class="btn-action bg-amber" onclick="accionInterceptarDesdeRetorno()">
+            <span>🔄 Interceptar Viaje (Ir por Otro Cliente)</span>
+            <span class="btn-sub">Pide ODO donde interceptaste, cierra este y empieza otro</span>
           </button>
-          <button class="btn-action bg-emerald" onclick="llegarABase()">
+          <button class="btn-action bg-emerald" onclick="accionLlegueABase()">
             <span>🏠 Llegué a Base (Cerrar Jornada)</span>
-            <span class="btn-sub">Sella odómetro final y guarda en bóvedas</span>
+            <span class="btn-sub">Pide ODO al llegar a casa y guarda en bóvedas</span>
           </button>
         </div>
 
-        <!-- FASE 7: VUELTA PERSONAL -->
+        <!-- FASE 7: VUELTA PERSONAL EN CURSO -->
         <div id="controls-personal" class="hidden">
-          <button class="btn-action bg-purple" onclick="finalizarVueltaPersonal()">
+          <button class="btn-action bg-emerald" onclick="accionInterceptarDesdePersonal()">
+            <span>🚕 Me salió un viaje (Ir por Cliente)</span>
+            <span class="btn-sub">Pide ODO actual, cierra lo personal e inicia acercamiento</span>
+          </button>
+          <button class="btn-action bg-purple" onclick="accionFinalizarVueltaPersonal()">
             <span>🏠 Finalizar Vuelta Personal</span>
-            <span class="btn-sub">Transfiere costo/km desde tu comisión al auto</span>
+            <span class="btn-sub">Pide ODO final y descuenta costo puro de tu comisión</span>
           </button>
         </div>
-      </div>
-
-      <!-- TARJETA: REGISTRO DIRECTO POR ODÓMETRO GENERAL DEL TABLERO -->
-      <div class="card" style="border-color: rgba(59, 130, 246, 0.45);">
-        <div class="card-header">
-          <span class="card-title" style="color:#93c5fd;">🔢 Registro por Odómetro Total (ODO)</span>
-        </div>
-        <div style="font-size:11px; color:var(--text-muted); margin-bottom:10px;">
-          Ideal cuando apagas y prendes el carro: pon el <strong>ODO total</strong> que marca tu tablero ahorita y la app calcula sola los km recorridos desde <strong id="man-base-odo" style="color:#fff;">53,624.0</strong> km.
-        </div>
-        <div class="form-group">
-          <label>Tipo de Movimiento</label>
-          <select id="man-type">
-            <option value="SERVICIO">🚕 Servicio con Cliente Cobrado</option>
-            <option value="TRASLADO">🚚 Traslado Vacío Operativo ($0)</option>
-            <option value="PERSONAL">🟣 Vuelta Personal (Descuenta costo a tu comisión)</option>
-          </select>
-        </div>
-        <div class="row-2">
-          <div class="form-group">
-            <label>Modo de Captura</label>
-            <select id="man-mode" onchange="cambiarModoManual()">
-              <option value="ODO_FINAL">Odómetro Total Final (ODO)</option>
-              <option value="DIST_DIRECTA">Distancia Recorrida (km)</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label id="man-val-label">ODO Final en Tablero</label>
-            <input type="number" id="man-val" placeholder="Ej. 53646" step="0.1" oninput="previsualizarManual()">
-          </div>
-        </div>
-        <div class="row-2">
-          <div class="form-group">
-            <label>Minutos Totales</label>
-            <input type="number" id="man-mins" placeholder="Ej. 35">
-          </div>
-          <div class="form-group">
-            <label>Cobro ($ MXN)</label>
-            <input type="number" id="man-fare" value="0" placeholder="0" oninput="previsualizarManual()">
-          </div>
-        </div>
-        <div class="form-group">
-          <label>Nota / Ruta (Opcional)</label>
-          <input type="text" id="man-note" placeholder="Ej. Villa Juárez → Culiacán">
-        </div>
-        <div id="man-preview" style="font-size:12px; color:#6ee7b7; margin-bottom:10px;">
-          Ingresa el ODO del tablero para ver los km calculados automáticamente.
-        </div>
-        <button class="btn-action bg-blue" style="padding:12px; font-size:14px; margin-bottom:0;" onclick="guardarRegistroManual()">
-          💾 Calcular Km Reales y Guardar en Cajas
-        </button>
       </div>
     </section>
 
@@ -620,7 +574,6 @@
             <span id="credit-rem">Faltan $7,783.09</span>
           </div>
 
-          <!-- DESGLOSE DE LOS 2 PRÉSTAMOS -->
           <div class="loan-card">
             <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
               <strong style="color:#60a5fa;">Préstamo 1 (Inicia 1 Dic • 6 meses)</strong>
@@ -685,7 +638,7 @@
           </div>
           <div class="row-2">
             <div class="form-group">
-              <label>Odómetro Actual (km)</label>
+              <label>Odómetro Actual (ODO)</label>
               <input type="number" id="fuel-odo" step="0.1">
             </div>
             <div class="form-group" style="display:flex; align-items:center; padding-top:18px;">
@@ -794,16 +747,54 @@
             <input type="url" id="cfg-firebase-url" placeholder="https://tu-proyecto-default-rtdb.firebaseio.com" onchange="guardarConfig()">
           </div>
           <button class="btn-action bg-blue" style="padding:11px; font-size:14px;" onclick="sincronizarFirebase(true)">
-            ☁️ Sincronizar Ahora con Firebase
+            ☁️ Subir Datos Ahora a Firebase
+          </button>
+          <button class="btn-action bg-slate" style="padding:10px; font-size:13px;" onclick="restaurarDesdeFirebase()">
+            ⬇️ Descargar Respaldo desde Firebase
           </button>
           <div id="sync-log" style="font-size:11px; color:var(--text-muted); margin-top:6px;">
-            Modo local activo. Se sincronizará automáticamente al detectar Wi-Fi si configuras la URL.
+            Modo Offline-First activo: todo se guarda primero en tu teléfono y sube automático al detectar Wi-Fi.
           </div>
         </div>
       </section>
 
     </div>
   </main>
+
+  <!-- MODAL DE SELLO DE ODÓMETRO Y COBRO -->
+  <div id="odo-modal" class="modal-backdrop hidden">
+    <div class="modal-box">
+      <div class="modal-title" id="modal-title">Registrar Odómetro</div>
+      <div class="modal-desc" id="modal-desc">Ingresa el kilometraje actual del tablero.</div>
+
+      <div class="form-group">
+        <label id="modal-odo-label">Odómetro Total del Tablero (ODO)</label>
+        <input type="number" id="modal-odo-input" step="0.1" inputmode="decimal" oninput="actualizarVistaPreviaModal()">
+      </div>
+
+      <div id="modal-fare-section" class="hidden">
+        <div class="form-group">
+          <label>Tarifa Fija Rápida (Opcional)</label>
+          <select id="modal-route-select" onchange="seleccionarTarifaModal(this.value)">
+            <option value="">-- Escribir monto manual abajo --</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Monto Cobrado al Cliente ($ MXN)</label>
+          <input type="number" id="modal-fare-input" placeholder="Ej. 300" step="5" inputmode="decimal" oninput="actualizarVistaPreviaModal()">
+        </div>
+      </div>
+
+      <div class="modal-calc-hint" id="modal-calc-hint">
+        Distancia calculada: 0.00 km
+      </div>
+
+      <div class="modal-btns">
+        <button class="btn-action bg-slate" style="padding:12px; font-size:14px; margin:0;" onclick="cerrarModal()">Cancelar</button>
+        <button class="btn-action bg-emerald" style="padding:12px; font-size:14px; margin:0;" onclick="confirmarModal()">Confirmar</button>
+      </div>
+    </div>
+  </div>
 
   <!-- NAVEGACIÓN INFERIOR MÓVIL -->
   <nav class="bottom-nav">
@@ -822,20 +813,23 @@
   </nav>
 
   <script>
+    // REGISTRO DE SERVICE WORKER PARA FUNCIONAMIENTO 100% SIN INTERNET NI DATOS
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then(registrations => {
-        for (let reg of registrations) {
-          reg.unregister();
-        }
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').then((reg) => {
+          reg.update();
+        }).catch((err) => console.log('SW offline listo:', err));
       });
     }
 
-    const STORAGE_KEY = 'corolla_hev_flotilla_v11';
+    const STORAGE_KEY = 'corolla_hev_flotilla_v13';
+    const LIVE_SESSION_KEY = 'corolla_hev_live_session_v13';
 
     function obtenerEstadoBaseReal() {
       return {
         odometer: 53624.0,
         lastFullOdo: 53602.0,
+        updatedAt: Date.now(),
         config: {
           gasPrice: 23.75,
           kml: 20.0,
@@ -895,27 +889,39 @@
 
     let live = {
       phase: 'IDLE',
+      odoStart: 53624.0,
+      odoPickup: 0,
+      odoDrop: 0,
+      odoLastMark: 53624.0,
       kmAB: 0,
       kmBC: 0,
       kmCA: 0,
-      kmCurrentLeg: 0,
       secondsTotal: 0,
       waitSeconds: 0,
-      speedKmh: 0,
       fareBase: 0,
-      odoStart: 0,
-      odoLegStart: 0,
-      odoPickup: 0,
-      odoDrop: 0,
-      simMode: false,
-      lastGps: null
+      isEmptyTransfer: false
     };
 
+    let modalContext = {
+      action: null,
+      refOdo: 0,
+      askFare: false,
+      allowEqualOdo: true
+    };
+
+    function guardarSesionEnCurso() {
+      localStorage.setItem(LIVE_SESSION_KEY, JSON.stringify(live));
+    }
+
     function cargarEstado() {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
+      // Migrar datos si existían en v12 para no perder nada
+      const savedV13 = localStorage.getItem(STORAGE_KEY);
+      const savedV12 = localStorage.getItem('corolla_hev_flotilla_v12');
+      const raw = savedV13 || savedV12;
+
+      if (raw) {
         try {
-          const parsed = JSON.parse(saved);
+          const parsed = JSON.parse(raw);
           state = {
             ...state,
             ...parsed,
@@ -923,149 +929,503 @@
             loans: { ...state.loans, ...(parsed.loans || {}) },
             vaults: { ...state.vaults, ...(parsed.vaults || {}) }
           };
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
         } catch (e) { console.error(e); }
       } else {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
       }
+
+      const savedLive = localStorage.getItem(LIVE_SESSION_KEY);
+      if (savedLive) {
+        try {
+          const parsedLive = JSON.parse(savedLive);
+          live = { ...live, ...parsedLive };
+          if (live.phase !== 'IDLE') {
+            restaurarFaseVisual();
+          }
+        } catch (e) { console.error(e); }
+      } else {
+        live.odoLastMark = state.odometer;
+      }
+
       actualizarUI();
     }
 
+    function restaurarFaseVisual() {
+      const badges = {
+        IDLE: 'EN BASE (LISTO)',
+        PICKUP: 'YENDO POR CLIENTE (A → B)',
+        TRIP: 'CON CLIENTE EN RUTA (B → C)',
+        POST_DROP: 'CLIENTE EN DESTINO (ELIGE ACCIÓN)',
+        WAITING: 'ESPERANDO CLIENTE ($2.50/MIN)',
+        RETURN_CLIENT: 'REGRESO CON CLIENTE (50% TARIFA)',
+        RETURNING: live.isEmptyTransfer ? 'TRASLADO VACÍO EN CURSO ($0)' : 'REGRESANDO VACÍO A BASE',
+        PERSONAL: 'VUELTA PERSONAL EN CURSO'
+      };
+      setPhase(live.phase, badges[live.phase] || 'EN CURSO');
+    }
+
     function guardarEstado(marcarSync = true) {
-      if (marcarSync) state.pendingSync = true;
+      if (marcarSync) {
+        state.pendingSync = true;
+        state.updatedAt = Date.now();
+      }
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      guardarSesionEnCurso();
       actualizarUI();
+      actualizarEstadoRed();
+
       if (marcarSync && navigator.onLine && state.config.firebaseUrl) {
         sincronizarFirebase(false);
       }
     }
 
-    function cambiarModoManual() {
-      const mode = document.getElementById('man-mode').value;
-      const lbl = document.getElementById('man-val-label');
-      const inp = document.getElementById('man-val');
-      if (mode === 'ODO_FINAL') {
-        lbl.textContent = 'ODO Final en Tablero';
-        inp.placeholder = `Mayor a ${state.odometer.toFixed(0)}`;
-      } else {
-        lbl.textContent = 'Km Recorridos';
-        inp.placeholder = 'Ej. 22.7';
+    setInterval(() => {
+      if (live.phase !== 'IDLE') {
+        live.secondsTotal++;
+        const mins = String(Math.floor(live.secondsTotal / 60)).padStart(2, '0');
+        const secs = String(live.secondsTotal % 60).padStart(2, '0');
+        document.getElementById('live-time').textContent = `${mins}:${secs}`;
+
+        if (live.phase === 'WAITING') {
+          live.waitSeconds++;
+          const waitFee = (live.waitSeconds / 60) * 2.50;
+          document.getElementById('wait-fee-live').textContent = '$' + waitFee.toFixed(2) + ' MXN';
+        }
+        if (live.secondsTotal % 10 === 0) {
+          guardarSesionEnCurso();
+        }
       }
-      previsualizarManual();
+    }, 1000);
+
+    // SISTEMA DE MODAL PARA SELLAR ODÓMETRO REAL EN CADA PASO
+    function abrirModalOdo({ action, title, desc, refOdo, defaultOdo, askFare = false, allowEqualOdo = true }) {
+      modalContext = { action, refOdo, askFare, allowEqualOdo };
+      document.getElementById('modal-title').textContent = title;
+      document.getElementById('modal-desc').textContent = desc;
+      document.getElementById('modal-odo-input').value = defaultOdo !== undefined ? defaultOdo : refOdo;
+
+      const fareSec = document.getElementById('modal-fare-section');
+      if (askFare) {
+        fareSec.classList.remove('hidden');
+        document.getElementById('modal-fare-input').value = '';
+        const sel = document.getElementById('modal-route-select');
+        sel.innerHTML = '<option value="">-- Escribir monto manual abajo --</option>';
+        state.routes.forEach((r, idx) => {
+          sel.innerHTML += `<option value="${idx}">${r.name} — $${r.price}</option>`;
+        });
+      } else {
+        fareSec.classList.add('hidden');
+      }
+
+      document.getElementById('odo-modal').classList.remove('hidden');
+      actualizarVistaPreviaModal();
+      setTimeout(() => {
+        const inp = document.getElementById('modal-odo-input');
+        inp.focus();
+        inp.select();
+      }, 100);
     }
 
-    function previsualizarManual() {
-      const mode = document.getElementById('man-mode').value;
-      const val = parseFloat(document.getElementById('man-val').value);
-      const fare = parseFloat(document.getElementById('man-fare').value) || 0;
-      const prev = document.getElementById('man-preview');
+    function cerrarModal() {
+      document.getElementById('odo-modal').classList.add('hidden');
+    }
 
-      if (isNaN(val) || val <= 0) {
-        prev.textContent = 'Ingresa el dato para calcular automáticamente los kilómetros reales.';
+    function seleccionarTarifaModal(idx) {
+      if (idx === '') return;
+      const r = state.routes[parseInt(idx)];
+      if (r) {
+        document.getElementById('modal-fare-input').value = r.price;
+        actualizarVistaPreviaModal();
+      }
+    }
+
+    function actualizarVistaPreviaModal() {
+      const val = parseFloat(document.getElementById('modal-odo-input').value);
+      const hint = document.getElementById('modal-calc-hint');
+      if (isNaN(val)) {
+        hint.textContent = 'Escribe el kilometraje que ves en el tablero.';
+        return;
+      }
+      const diff = val - modalContext.refOdo;
+      if (diff < 0) {
+        hint.innerHTML = `<span style="color:#f87171;">⚠️ No puede ser menor a ${modalContext.refOdo.toFixed(1)} km.</span>`;
+        return;
+      }
+      let txt = `Odómetro anterior: <strong>${modalContext.refOdo.toFixed(1)}</strong> → Tramo: <strong>+${diff.toFixed(1)} km</strong>`;
+      if (modalContext.askFare) {
+        const fare = parseFloat(document.getElementById('modal-fare-input').value) || 0;
+        const totalKmEst = live.kmAB + diff;
+        const costPerKm = (state.config.gasPrice / state.config.kml) + state.config.maintPerKm;
+        const autoCost = totalKmEst * costPerKm;
+        const net = Math.max(0, fare - autoCost);
+        const comm = net * (state.config.commPct / 100);
+        txt += `<br>Acumulado servicio: <strong>${totalKmEst.toFixed(1)} km</strong> | Tu comisión est.: <strong>$${comm.toFixed(2)}</strong>`;
+      }
+      hint.innerHTML = txt;
+    }
+
+    function confirmarModal() {
+      const odoVal = parseFloat(document.getElementById('modal-odo-input').value);
+      if (isNaN(odoVal) || odoVal < modalContext.refOdo) {
+        alert(`El odómetro debe ser igual o mayor a ${modalContext.refOdo.toFixed(1)} km.`);
+        return;
+      }
+      if (!modalContext.allowEqualOdo && odoVal <= modalContext.refOdo) {
+        alert(`Para cerrar este tramo debes ingresar un odómetro mayor a ${modalContext.refOdo.toFixed(1)} km.`);
         return;
       }
 
-      let kmCalc = 0;
-      if (mode === 'ODO_FINAL') {
-        kmCalc = val - state.odometer;
-        if (kmCalc <= 0) {
-          prev.innerHTML = `<span style="color:#f87171;">⚠️ El ODO final (${val}) debe ser mayor a tu ODO actual (${state.odometer.toFixed(1)} km).</span>`;
+      let fareVal = 0;
+      if (modalContext.askFare) {
+        const rawFare = document.getElementById('modal-fare-input').value.trim();
+        fareVal = rawFare === '' ? 0 : parseFloat(rawFare);
+        if (isNaN(fareVal) || fareVal < 0) {
+          alert('Ingresa un monto de cobro válido (0 o mayor).');
           return;
         }
-      } else {
-        kmCalc = val;
       }
 
-      const costPerKm = (state.config.gasPrice / state.config.kml) + state.config.maintPerKm;
-      const autoCost = kmCalc * costPerKm;
-      const netFree = Math.max(0, fare - autoCost);
+      const act = modalContext.action;
+      cerrarModal();
+      procesarTransicionOdo(act, odoVal, fareVal);
+    }
+
+    function accionIniciarAcercamiento() {
+      abrirModalOdo({
+        action: 'START_PICKUP',
+        title: '🟢 Salir de Base (Ir por Cliente)',
+        desc: 'Confirma el odómetro total (ODO) que tiene el Corolla en este momento al arrancar:',
+        refOdo: state.odometer,
+        defaultOdo: state.odometer
+      });
+    }
+
+    function accionIniciarTrasladoVacio() {
+      abrirModalOdo({
+        action: 'START_EMPTY',
+        title: '🚚 Traslado Vacío Operativo ($0)',
+        desc: 'Ingresa el odómetro total (ODO) con el que sales a moverte sin cliente:',
+        refOdo: state.odometer,
+        defaultOdo: state.odometer
+      });
+    }
+
+    function accionIniciarVueltaPersonal() {
+      abrirModalOdo({
+        action: 'START_PERSONAL',
+        title: '🟣 Iniciar Vuelta Personal',
+        desc: 'Ingresa el odómetro total (ODO) al iniciar tu recorrido personal:',
+        refOdo: state.odometer,
+        defaultOdo: state.odometer
+      });
+    }
+
+    function accionLleguePorCliente() {
+      abrirModalOdo({
+        action: 'PICKUP_CLIENT',
+        title: '📍 Llegué por el Cliente',
+        desc: `Saliste en ${live.odoStart.toFixed(1)} km. ¿Qué odómetro total (ODO) tiene el carro ahorita que recogiste al cliente?`,
+        refOdo: live.odoStart,
+        defaultOdo: live.odoStart
+      });
+    }
+
+    function accionCerrarAcercamientoComoVacio() {
+      abrirModalOdo({
+        action: 'CLOSE_EMPTY_FROM_PICKUP',
+        title: '🚚 Cerrar como Traslado Vacío ($0)',
+        desc: `Iniciaste en ${live.odoStart.toFixed(1)} km. Pon el odómetro actual para registrar los km recorridos sin cobro:`,
+        refOdo: live.odoStart,
+        defaultOdo: live.odoStart
+      });
+    }
+
+    function accionDejeCliente() {
+      abrirModalOdo({
+        action: 'DROP_CLIENT',
+        title: '🏁 Dejé al Cliente',
+        desc: `Recogiste al cliente en ${live.odoPickup.toFixed(1)} km. Pon el odómetro actual y cuánto cobraste:`,
+        refOdo: live.odoPickup,
+        defaultOdo: live.odoPickup,
+        askFare: true
+      });
+    }
+
+    function accionFinalizarViajeRedondo() {
+      abrirModalOdo({
+        action: 'FINISH_ROUND_TRIP',
+        title: '🏁 Finalizar Viaje Redondo',
+        desc: `Saliste de regreso en ${live.odoDrop.toFixed(1)} km. Pon el odómetro final al dejar al cliente:`,
+        refOdo: live.odoDrop,
+        defaultOdo: live.odoDrop
+      });
+    }
+
+    function accionLlegueABase() {
+      abrirModalOdo({
+        action: 'ARRIVE_BASE',
+        title: '🏠 Llegué a Base (Cerrar Jornada)',
+        desc: `Último punto sellado: ${live.odoLastMark.toFixed(1)} km. ¿Qué odómetro total tiene el carro al llegar a base?`,
+        refOdo: live.odoLastMark,
+        defaultOdo: live.odoLastMark
+      });
+    }
+
+    function accionInterceptarDesdeRetorno() {
+      abrirModalOdo({
+        action: 'INTERCEPT_FROM_RETURN',
+        title: '🔄 Interceptar Viaje en Camino',
+        desc: `Venías de regreso desde ${live.odoLastMark.toFixed(1)} km. Pon el odómetro exacto donde te salió el nuevo viaje:`,
+        refOdo: live.odoLastMark,
+        defaultOdo: live.odoLastMark
+      });
+    }
+
+    function accionFinalizarVueltaPersonal() {
+      abrirModalOdo({
+        action: 'FINISH_PERSONAL',
+        title: '🏠 Finalizar Vuelta Personal',
+        desc: `Iniciaste lo personal en ${live.odoStart.toFixed(1)} km. Pon el odómetro actual para descontar el costo puro de tu comisión:`,
+        refOdo: live.odoStart,
+        defaultOdo: live.odoStart
+      });
+    }
+
+    function accionInterceptarDesdePersonal() {
+      abrirModalOdo({
+        action: 'INTERCEPT_FROM_PERSONAL',
+        title: '🚕 Cortar Vuelta Personal e Ir por Cliente',
+        desc: `Iniciaste lo personal en ${live.odoStart.toFixed(1)} km. Pon el odómetro donde te salió el viaje (ahí mismo empieza el acercamiento):`,
+        refOdo: live.odoStart,
+        defaultOdo: live.odoStart
+      });
+    }
+
+    function procesarTransicionOdo(action, odo, fare) {
+      state.odometer = odo;
+      live.odoLastMark = odo;
+
+      if (action === 'START_PICKUP') {
+        live.odoStart = odo;
+        live.odoPickup = 0;
+        live.odoDrop = 0;
+        live.kmAB = 0; live.kmBC = 0; live.kmCA = 0;
+        live.secondsTotal = 0; live.waitSeconds = 0;
+        live.fareBase = 0;
+        live.isEmptyTransfer = false;
+        setPhase('PICKUP', 'YENDO POR CLIENTE (A → B)');
+        guardarEstado();
+      }
+      else if (action === 'START_EMPTY') {
+        live.odoStart = odo;
+        live.odoPickup = 0;
+        live.odoDrop = 0;
+        live.kmAB = 0; live.kmBC = 0; live.kmCA = 0;
+        live.secondsTotal = 0; live.waitSeconds = 0;
+        live.fareBase = 0;
+        live.isEmptyTransfer = true;
+        setPhase('RETURNING', 'TRASLADO VACÍO EN CURSO ($0)');
+        guardarEstado();
+      }
+      else if (action === 'START_PERSONAL') {
+        live.odoStart = odo;
+        live.kmAB = 0; live.kmBC = 0; live.kmCA = 0;
+        live.secondsTotal = 0;
+        setPhase('PERSONAL', 'VUELTA PERSONAL EN CURSO');
+        guardarEstado();
+      }
+      else if (action === 'PICKUP_CLIENT') {
+        live.odoPickup = odo;
+        live.kmAB = odo - live.odoStart;
+        setPhase('TRIP', 'CON CLIENTE EN RUTA (B → C)');
+        guardarEstado();
+      }
+      else if (action === 'CLOSE_EMPTY_FROM_PICKUP') {
+        live.kmAB = odo - live.odoStart;
+        cerrarServicioCompleto(0, '🚚 Traslado Vacío Operativo ($0)', odo);
+      }
+      else if (action === 'DROP_CLIENT') {
+        live.odoDrop = odo;
+        live.kmBC = odo - live.odoPickup;
+        live.fareBase = fare;
+        document.getElementById('post-drop-info').innerHTML = `
+          Cobro registrado: <strong>$${fare.toFixed(2)} MXN</strong> • Tramo cliente: <strong>${live.kmBC.toFixed(1)} km</strong> (Acercamiento: ${live.kmAB.toFixed(1)} km)
+        `;
+        setPhase('POST_DROP', 'CLIENTE EN DESTINO (ELIGE ACCIÓN)');
+        guardarEstado();
+      }
+      else if (action === 'FINISH_ROUND_TRIP') {
+        const kmRegreso = odo - live.odoDrop;
+        live.kmCA = kmRegreso;
+        const waitFee = (live.waitSeconds / 60) * 2.50;
+        const returnFare = live.fareBase * 0.50;
+        const totalCharged = live.fareBase + waitFee + returnFare;
+        cerrarServicioCompleto(totalCharged, '🔄 Viaje Redondo + Espera', odo);
+      }
+      else if (action === 'ARRIVE_BASE') {
+        if (live.isEmptyTransfer) {
+          live.kmCA = odo - live.odoStart;
+          cerrarServicioCompleto(0, '🚚 Traslado Vacío a Base ($0)', odo);
+        } else {
+          live.kmCA = odo - live.odoDrop;
+          cerrarServicioCompleto(live.fareBase, '🚕 Servicio Completo Ida/Vuelta', odo);
+        }
+      }
+      else if (action === 'INTERCEPT_FROM_RETURN') {
+        if (live.isEmptyTransfer) {
+          live.kmCA = odo - live.odoStart;
+          cerrarServicioCompleto(0, '🚚 Traslado Vacío previo ($0)', odo);
+        } else {
+          live.kmCA = odo - live.odoDrop;
+          cerrarServicioCompleto(live.fareBase, '🚕 Servicio (Interceptó nuevo viaje)', odo);
+        }
+        live.odoStart = odo;
+        live.odoPickup = 0;
+        live.odoDrop = 0;
+        live.kmAB = 0; live.kmBC = 0; live.kmCA = 0;
+        live.secondsTotal = 0; live.waitSeconds = 0;
+        live.fareBase = 0;
+        live.isEmptyTransfer = false;
+        setPhase('PICKUP', 'YENDO POR CLIENTE (A → B)');
+        guardarEstado();
+      }
+      else if (action === 'FINISH_PERSONAL') {
+        const kmPers = odo - live.odoStart;
+        cerrarVueltaPersonal(kmPers, odo);
+      }
+      else if (action === 'INTERCEPT_FROM_PERSONAL') {
+        const kmPers = odo - live.odoStart;
+        if (kmPers > 0) {
+          cerrarVueltaPersonal(kmPers, odo);
+        }
+        live.odoStart = odo;
+        live.odoPickup = 0;
+        live.odoDrop = 0;
+        live.kmAB = 0; live.kmBC = 0; live.kmCA = 0;
+        live.secondsTotal = 0; live.waitSeconds = 0;
+        live.fareBase = 0;
+        live.isEmptyTransfer = false;
+        setPhase('PICKUP', 'YENDO POR CLIENTE (A → B)');
+        guardarEstado();
+      }
+    }
+
+    function setPhase(newPhase, badgeText) {
+      live.phase = newPhase;
+      document.getElementById('phase-badge').textContent = badgeText;
+      ['controls-idle', 'controls-pickup', 'controls-trip', 'controls-post-drop', 'controls-waiting', 'controls-return-client', 'controls-returning', 'controls-personal']
+        .forEach(id => document.getElementById(id).classList.add('hidden'));
+
+      const map = {
+        IDLE: 'controls-idle',
+        PICKUP: 'controls-pickup',
+        TRIP: 'controls-trip',
+        POST_DROP: 'controls-post-drop',
+        WAITING: 'controls-waiting',
+        RETURN_CLIENT: 'controls-return-client',
+        RETURNING: 'controls-returning',
+        PERSONAL: 'controls-personal'
+      };
+      document.getElementById(map[newPhase]).classList.remove('hidden');
+      document.getElementById('cycle-summary').classList.toggle('hidden', newPhase === 'IDLE' || newPhase === 'PERSONAL');
+      actualizarResumenTramosUI();
+    }
+
+    function iniciarEsperaRedondo() {
+      live.waitSeconds = 0;
+      setPhase('WAITING', 'ESPERANDO CLIENTE ($2.50/MIN)');
+      guardarSesionEnCurso();
+    }
+
+    function iniciarRegresoCliente() {
+      setPhase('RETURN_CLIENT', 'REGRESO CON CLIENTE (50% TARIFA)');
+      guardarSesionEnCurso();
+    }
+
+    function iniciarRetornoBase() {
+      setPhase('RETURNING', 'REGRESANDO VACÍO A BASE');
+      guardarSesionEnCurso();
+    }
+
+    function quedarEnZona() {
+      live.kmCA = 0;
+      cerrarServicioCompleto(live.fareBase, '🚕 Servicio (Cerrado en Zona)', live.odoDrop);
+    }
+
+    function cerrarServicioCompleto(totalCobrado, tipoEtiqueta, odoFinal) {
+      const totalKm = live.kmAB + live.kmBC + live.kmCA;
+      const gasCost = totalKm * (state.config.gasPrice / state.config.kml);
+      const maintCost = totalKm * state.config.maintPerKm;
+      const netFree = Math.max(0, totalCobrado - gasCost - maintCost);
       const comm = netFree * (state.config.commPct / 100);
       const credit = netFree - comm;
-
-      prev.innerHTML = `
-        ✅ <strong>Distancia calculada: ${kmCalc.toFixed(2)} km</strong> (ODO quedará en ${(state.odometer + kmCalc).toFixed(1)} km)<br>
-        Costo Auto: $${autoCost.toFixed(2)} | Comisión: $${comm.toFixed(2)} | Crédito: $${credit.toFixed(2)}
-      `;
-    }
-
-    // GUARDAR REGISTRO MANUAL POR ODÓMETRO TOTAL O DISTANCIA
-    function guardarRegistroManual() {
-      const tipo = document.getElementById('man-type').value;
-      const mode = document.getElementById('man-mode').value;
-      const val = parseFloat(document.getElementById('man-val').value);
-      const mins = parseInt(document.getElementById('man-mins').value) || 0;
-      const fareRaw = document.getElementById('man-fare').value.trim();
-      const fare = fareRaw === '' ? 0 : parseFloat(fareRaw);
-      const nota = document.getElementById('man-note').value.trim();
-
-      if (isNaN(val) || val <= 0) {
-        alert('Ingresa el odómetro final o los kilómetros recorridos.');
-        return;
-      }
-
-      let km = 0;
-      if (mode === 'ODO_FINAL') {
-        km = val - state.odometer;
-        if (km <= 0) {
-          alert(`El odómetro final (${val}) debe ser mayor al odómetro actual (${state.odometer.toFixed(1)} km).`);
-          return;
-        }
-      } else {
-        km = val;
-      }
-
-      if (isNaN(fare) || fare < 0) {
-        alert('Ingresa un cobro válido (0 o mayor).');
-        return;
-      }
-
-      const odoInicio = state.odometer;
-      state.odometer = mode === 'ODO_FINAL' ? val : (state.odometer + km);
-
-      const gasCost = km * (state.config.gasPrice / state.config.kml);
-      const maintCost = km * state.config.maintPerKm;
-      const totalAutoCost = gasCost + maintCost;
-
-      let comm = 0;
-      let credit = 0;
-      let label = '';
-
-      if (tipo === 'PERSONAL') {
-        comm = -totalAutoCost;
-        label = `🟣 Vuelta Personal (${mins} min)${nota ? ' - ' + nota : ''}`;
-      } else {
-        const netFree = Math.max(0, fare - totalAutoCost);
-        comm = netFree * (state.config.commPct / 100);
-        credit = netFree - comm;
-        label = tipo === 'TRASLADO'
-          ? `🚚 Traslado Vacío (${mins} min)${nota ? ' - ' + nota : ''}`
-          : `🚕 Servicio (${mins} min)${nota ? ' - ' + nota : ''}`;
-      }
 
       state.vaults.gas += gasCost;
       state.vaults.maint += maintCost;
       state.vaults.comm += comm;
       state.vaults.credit += credit;
 
+      const mins = Math.round(live.secondsTotal / 60);
       state.history.unshift({
         date: new Date().toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' }),
-        type: label,
-        km: km.toFixed(2),
-        odoRange: `${odoInicio.toFixed(1)} → ${state.odometer.toFixed(1)}`,
-        charged: fare.toFixed(2),
+        type: `${tipoEtiqueta} (${mins} min)`,
+        km: totalKm.toFixed(2),
+        odoRange: `${live.odoStart.toFixed(1)} → ${odoFinal.toFixed(1)}`,
+        charged: totalCobrado.toFixed(2),
         gas: gasCost.toFixed(2),
         maint: maintCost.toFixed(2),
         comm: comm.toFixed(2),
         credit: credit.toFixed(2)
       });
 
-      document.getElementById('man-val').value = '';
-      document.getElementById('man-mins').value = '';
-      document.getElementById('man-fare').value = '0';
-      document.getElementById('man-note').value = '';
-      document.getElementById('man-preview').textContent = 'Ingresa el dato para calcular automáticamente los kilómetros reales.';
-
+      live.fareBase = 0;
+      live.isEmptyTransfer = false;
+      setPhase('IDLE', 'EN BASE (LISTO)');
       guardarEstado();
-      alert(`¡Listo! Se calcularon ${km.toFixed(2)} km reales y el odómetro quedó en ${state.odometer.toFixed(1)} km.`);
+    }
+
+    function cerrarVueltaPersonal(kmPers, odoFinal) {
+      const gasCost = kmPers * (state.config.gasPrice / state.config.kml);
+      const maintCost = kmPers * state.config.maintPerKm;
+      const totalDiscount = gasCost + maintCost;
+
+      state.vaults.comm -= totalDiscount;
+      state.vaults.gas += gasCost;
+      state.vaults.maint += maintCost;
+
+      const mins = Math.round(live.secondsTotal / 60);
+      state.history.unshift({
+        date: new Date().toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' }),
+        type: `🟣 Vuelta Personal (${mins} min • Descuento Comisión)`,
+        km: kmPers.toFixed(2),
+        odoRange: `${live.odoStart.toFixed(1)} → ${odoFinal.toFixed(1)}`,
+        charged: '0.00',
+        gas: gasCost.toFixed(2),
+        maint: maintCost.toFixed(2),
+        comm: (-totalDiscount).toFixed(2),
+        credit: '0.00'
+      });
+
+      setPhase('IDLE', 'EN BASE (LISTO)');
+      guardarEstado();
+    }
+
+    function cancelarCiclo() {
+      if (confirm('¿Cancelar el movimiento actual sin guardar?')) {
+        live.fareBase = 0;
+        live.isEmptyTransfer = false;
+        setPhase('IDLE', 'EN BASE (LISTO)');
+        guardarSesionEnCurso();
+      }
+    }
+
+    function actualizarResumenTramosUI() {
+      document.getElementById('card-odo-last').textContent = live.odoLastMark.toLocaleString('es-MX', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+      document.getElementById('sum-odo-start').textContent = live.odoStart.toLocaleString('es-MX', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' km';
+      document.getElementById('sum-ab').textContent = live.odoPickup > 0 ? `${live.kmAB.toFixed(1)} km` : 'En curso...';
+      document.getElementById('sum-bc').textContent = live.odoDrop > 0 ? `${live.kmBC.toFixed(1)} km` : (live.odoPickup > 0 ? 'En curso...' : 'Pendiente');
+      document.getElementById('sum-ca').textContent = `${live.kmCA.toFixed(1)} km`;
     }
 
     function obtenerMetaMensualActual() {
@@ -1133,346 +1493,9 @@
       const val = prompt('Ingresa el kilometraje actual exacto de tu tablero Corolla (ODO):', state.odometer.toFixed(1));
       if (val !== null && !isNaN(parseFloat(val))) {
         state.odometer = parseFloat(val);
+        live.odoLastMark = state.odometer;
         guardarEstado();
       }
-    }
-
-    // AJUSTE EN VIVO USANDO DIRECTAMENTE EL ODÓMETRO TOTAL DEL TABLERO (ODO)
-    function ajustarConOdometroTotal() {
-      if (live.phase === 'IDLE' || live.phase === 'POST_DROP') {
-        alert('Inicia un tramo en movimiento para ajustar con el odómetro.');
-        return;
-      }
-
-      const odoInicioTramo = live.odoLegStart || live.odoStart || state.odometer;
-      const sugerido = Math.max(odoInicioTramo, state.odometer).toFixed(1);
-
-      const nuevoOdo = prompt(
-        `Iniciaste este tramo en ODO: ${odoInicioTramo.toFixed(1)} km.\nIngresa el ODÓMETRO TOTAL (ODO) que marca tu tablero ahorita:\n(La app restará automáticamente para sacar los km reales)`,
-        sugerido
-      );
-
-      if (nuevoOdo !== null) {
-        const parsedOdo = parseFloat(nuevoOdo);
-        if (!isNaN(parsedOdo) && parsedOdo >= odoInicioTramo) {
-          const kmRealesTramo = parsedOdo - odoInicioTramo;
-          const diferencia = kmRealesTramo - live.kmCurrentLeg;
-
-          live.kmCurrentLeg = kmRealesTramo;
-          state.odometer = parsedOdo;
-
-          if (live.phase === 'PICKUP') live.kmAB = Math.max(0, live.kmAB + diferencia);
-          else if (live.phase === 'TRIP' || live.phase === 'RETURN_CLIENT') live.kmBC = Math.max(0, live.kmBC + diferencia);
-          else if (live.phase === 'RETURNING' || live.phase === 'PERSONAL') live.kmCA = Math.max(0, live.kmCA + diferencia);
-        } else if (!isNaN(parsedOdo)) {
-          alert(`El odómetro actual (${parsedOdo}) no puede ser menor al odómetro con el que iniciaste este tramo (${odoInicioTramo.toFixed(1)} km).`);
-          return;
-        }
-      }
-
-      const minsActuales = Math.round(live.secondsTotal / 60);
-      const nuevoMin = prompt(
-        `Tiempo acumulado: ${minsActuales} minutos.\nIngresa los minutos reales del recorrido (o deja igual):`,
-        minsActuales
-      );
-      if (nuevoMin !== null) {
-        const parsedMin = parseInt(nuevoMin);
-        if (!isNaN(parsedMin) && parsedMin >= 0) {
-          live.secondsTotal = parsedMin * 60;
-        }
-      }
-
-      document.getElementById('odo-val').textContent = state.odometer.toLocaleString('es-MX', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-      actualizarTelemetriaUI();
-      actualizarPreviewComision();
-      guardarEstado(false);
-    }
-
-    setInterval(() => {
-      if (live.phase !== 'IDLE') {
-        live.secondsTotal++;
-        if (live.phase === 'WAITING') {
-          live.waitSeconds++;
-          const waitFee = (live.waitSeconds / 60) * 2.50;
-          document.getElementById('wait-fee-live').textContent = '$' + waitFee.toFixed(2) + ' MXN';
-        }
-        if (live.simMode && live.speedKmh > 0) {
-          const deltaKm = live.speedKmh / 3600;
-          avanzarDistancia(deltaKm);
-        }
-        actualizarTelemetriaUI();
-      }
-    }, 1000);
-
-    function avanzarDistancia(deltaKm) {
-      if (deltaKm <= 0) return;
-      state.odometer += deltaKm;
-      live.kmCurrentLeg += deltaKm;
-      if (live.phase === 'PICKUP') live.kmAB += deltaKm;
-      if (live.phase === 'TRIP' || live.phase === 'RETURN_CLIENT') live.kmBC += deltaKm;
-      if (live.phase === 'RETURNING' || live.phase === 'PERSONAL') live.kmCA += deltaKm;
-      document.getElementById('odo-val').textContent = state.odometer.toLocaleString('es-MX', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-      actualizarPreviewComision();
-    }
-
-    if ('geolocation' in navigator) {
-      navigator.geolocation.watchPosition((pos) => {
-        if (live.simMode) return;
-        const { latitude, longitude, speed } = pos.coords;
-        if (speed !== null && !isNaN(speed)) {
-          live.speedKmh = Math.round(speed * 3.6);
-        }
-        if (live.phase !== 'IDLE' && live.lastGps) {
-          const d = haversine(live.lastGps.lat, live.lastGps.lon, latitude, longitude);
-          if (d > 0.005 && d < 2) {
-            avanzarDistancia(d);
-          }
-        }
-        live.lastGps = { lat: latitude, lon: longitude };
-      }, () => {}, { enableHighAccuracy: true, maximumAge: 2000 });
-    }
-
-    function haversine(lat1, lon1, lat2, lon2) {
-      const R = 6371;
-      const dLat = (lat2 - lat1) * Math.PI / 180;
-      const dLon = (lon2 - lon1) * Math.PI / 180;
-      const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
-      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    }
-
-    function toggleSimulador() {
-      const p = document.getElementById('sim-panel');
-      p.classList.toggle('hidden');
-      live.simMode = !p.classList.contains('hidden');
-      if (!live.simMode) {
-        live.speedKmh = 0;
-        document.getElementById('sim-speed').value = 0;
-        document.getElementById('sim-speed-label').textContent = '0 km/h';
-      }
-    }
-
-    function actualizarVelocidadSim(val) {
-      live.speedKmh = parseFloat(val);
-      document.getElementById('sim-speed-label').textContent = val + ' km/h';
-    }
-
-    async function conectarOBD2() {
-      if (!navigator.bluetooth) {
-        alert('Tu navegador no soporta Web Bluetooth. Usa Google Chrome en Android con un escáner OBD2 BLE.');
-        return;
-      }
-      try {
-        const device = await navigator.bluetooth.requestDevice({
-          acceptAllDevices: true,
-          optionalServices: ['0000fff0-0000-1000-8000-00805f9b34fb', '0000ffe0-0000-1000-8000-00805f9b34fb']
-        });
-        document.getElementById('btn-ble').classList.add('active-ble');
-        document.getElementById('btn-ble').textContent = '🔵 ' + (device.name || 'OBD2');
-        alert('Conectado a ' + (device.name || 'Escáner OBD2') + '. Listo para telemetría.');
-      } catch (err) {
-        console.log('OBD2 cancelado:', err);
-      }
-    }
-
-    function setPhase(newPhase, badgeText) {
-      live.phase = newPhase;
-      live.kmCurrentLeg = 0;
-      live.odoLegStart = state.odometer;
-      document.getElementById('phase-badge').textContent = badgeText;
-      ['controls-idle', 'controls-pickup', 'controls-trip', 'controls-post-drop', 'controls-waiting', 'controls-return-client', 'controls-returning', 'controls-personal']
-        .forEach(id => document.getElementById(id).classList.add('hidden'));
-
-      const map = {
-        IDLE: 'controls-idle',
-        PICKUP: 'controls-pickup',
-        TRIP: 'controls-trip',
-        POST_DROP: 'controls-post-drop',
-        WAITING: 'controls-waiting',
-        RETURN_CLIENT: 'controls-return-client',
-        RETURNING: 'controls-returning',
-        PERSONAL: 'controls-personal'
-      };
-      document.getElementById(map[newPhase]).classList.remove('hidden');
-      document.getElementById('cycle-summary').classList.toggle('hidden', newPhase === 'IDLE' || newPhase === 'PERSONAL');
-
-      const editablePhases = ['PICKUP', 'TRIP', 'WAITING', 'RETURN_CLIENT', 'RETURNING', 'PERSONAL'];
-      document.getElementById('btn-edit-leg-km').classList.toggle('hidden', !editablePhases.includes(newPhase));
-
-      actualizarTelemetriaUI();
-    }
-
-    function iniciarAcercamiento() {
-      live.kmAB = 0; live.kmBC = 0; live.kmCA = 0;
-      live.secondsTotal = 0; live.waitSeconds = 0;
-      live.odoStart = state.odometer;
-      setPhase('PICKUP', 'YENDO POR CLIENTE (A → B)');
-    }
-
-    function iniciarTrasladoOperativo() {
-      live.kmAB = 0; live.kmBC = 0; live.kmCA = 0;
-      live.secondsTotal = 0; live.waitSeconds = 0;
-      live.odoStart = state.odometer;
-      setPhase('RETURNING', 'TRASLADO OPERATIVO VACÍO ($0)');
-    }
-
-    function cerrarComoTrasladoVacio() {
-      cerrarServicioCompleto(0, '🚚 Traslado Vacío Operativo ($0)');
-    }
-
-    function recogerCliente() {
-      live.odoPickup = state.odometer;
-      document.getElementById('trip-fare-input').value = '';
-      setPhase('TRIP', 'CON CLIENTE EN RUTA (B → C)');
-      actualizarPreviewComision();
-    }
-
-    function aplicarTarifaRapida(idx) {
-      if (idx === '') return;
-      const r = state.routes[parseInt(idx)];
-      if (r) {
-        document.getElementById('trip-fare-input').value = r.price;
-        actualizarPreviewComision();
-      }
-    }
-
-    document.getElementById('trip-fare-input').addEventListener('input', actualizarPreviewComision);
-
-    function actualizarPreviewComision() {
-      const fare = parseFloat(document.getElementById('trip-fare-input').value) || 0;
-      const gasCostPerKm = state.config.gasPrice / state.config.kml;
-      const totalCostPerKm = gasCostPerKm + state.config.maintPerKm;
-      const estReturnKm = fare > 0 ? (live.kmAB + live.kmBC) : 0;
-      const totalEstKm = live.kmAB + live.kmBC + estReturnKm;
-      const autoCost = totalEstKm * totalCostPerKm;
-      const netFree = Math.max(0, fare - autoCost);
-      const comm = netFree * (state.config.commPct / 100);
-      const credit = netFree - comm;
-
-      document.getElementById('live-commission-preview').innerHTML = `
-        <strong>Vista previa (${totalEstKm.toFixed(1)} km):</strong><br>
-        • Costo Auto ($${totalCostPerKm.toFixed(2)}/km): <strong>$${autoCost.toFixed(2)}</strong><br>
-        • Tu Comisión (${state.config.commPct}%): <strong style="color:#34d399;">$${comm.toFixed(2)}</strong> | Crédito: <strong style="color:#a78bfa;">$${credit.toFixed(2)}</strong>
-      `;
-    }
-
-    function llegarDestino() {
-      const rawVal = document.getElementById('trip-fare-input').value.trim();
-      const fare = rawVal === '' ? 0 : parseFloat(rawVal);
-      if (isNaN(fare) || fare < 0) {
-        alert('Ingresa un monto válido (0 o mayor).');
-        return;
-      }
-      live.fareBase = fare;
-      live.odoDrop = state.odometer;
-      if (fare === 0) {
-        cerrarServicioCompleto(0, '🚚 Traslado Vacío Operativo ($0)');
-        return;
-      }
-      setPhase('POST_DROP', 'CLIENTE EN DESTINO (ELIGE ACCIÓN)');
-    }
-
-    function iniciarEsperaRedondo() {
-      live.waitSeconds = 0;
-      setPhase('WAITING', 'ESPERANDO CLIENTE ($2.50/MIN)');
-    }
-
-    function iniciarRegresoCliente() {
-      setPhase('RETURN_CLIENT', 'REGRESO CON CLIENTE (50% TARIFA)');
-    }
-
-    function finalizarViajeRedondo() {
-      const waitFee = (live.waitSeconds / 60) * 2.50;
-      const returnFare = live.fareBase * 0.50;
-      const totalCharged = live.fareBase + waitFee + returnFare;
-      cerrarServicioCompleto(totalCharged, 'Viaje Redondo + Espera');
-    }
-
-    function iniciarRetornoBase() {
-      setPhase('RETURNING', 'REGRESANDO VACÍO A BASE');
-    }
-
-    function quedarEnZona() {
-      cerrarServicioCompleto(live.fareBase, 'Servicio (En Zona / Sin retorno vacío)');
-    }
-
-    function interceptarNuevoServicio() {
-      cerrarServicioCompleto(live.fareBase, 'Servicio / Traslado previo');
-      iniciarAcercamiento();
-    }
-
-    function llegarABase() {
-      const label = live.fareBase > 0 ? 'Servicio Completo Ida/Vuelta' : '🚚 Traslado Vacío a Base ($0)';
-      cerrarServicioCompleto(live.fareBase, label);
-    }
-
-    function cerrarServicioCompleto(totalCobrado, tipoEtiqueta) {
-      const totalKm = live.kmAB + live.kmBC + live.kmCA;
-      const gasCost = totalKm * (state.config.gasPrice / state.config.kml);
-      const maintCost = totalKm * state.config.maintPerKm;
-      const netFree = Math.max(0, totalCobrado - gasCost - maintCost);
-      const comm = netFree * (state.config.commPct / 100);
-      const credit = netFree - comm;
-
-      state.vaults.gas += gasCost;
-      state.vaults.maint += maintCost;
-      state.vaults.comm += comm;
-      state.vaults.credit += credit;
-
-      state.history.unshift({
-        date: new Date().toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' }),
-        type: tipoEtiqueta,
-        km: totalKm.toFixed(2),
-        odoRange: `${live.odoStart.toFixed(1)} → ${state.odometer.toFixed(1)}`,
-        charged: totalCobrado.toFixed(2),
-        gas: gasCost.toFixed(2),
-        maint: maintCost.toFixed(2),
-        comm: comm.toFixed(2),
-        credit: credit.toFixed(2)
-      });
-
-      live.fareBase = 0;
-      setPhase('IDLE', 'EN BASE (LISTO)');
-      guardarEstado();
-    }
-
-    function cancelarCiclo() {
-      if (confirm('¿Cancelar el servicio actual sin guardar?')) {
-        live.fareBase = 0;
-        setPhase('IDLE', 'EN BASE (LISTO)');
-      }
-    }
-
-    function iniciarVueltaPersonal() {
-      live.kmAB = 0; live.kmBC = 0; live.kmCA = 0;
-      live.secondsTotal = 0;
-      live.odoStart = state.odometer;
-      setPhase('PERSONAL', 'USO PERSONAL EN CURSO');
-    }
-
-    function finalizarVueltaPersonal() {
-      const kmPers = live.kmCA;
-      const gasCost = kmPers * (state.config.gasPrice / state.config.kml);
-      const maintCost = kmPers * state.config.maintPerKm;
-      const totalDiscount = gasCost + maintCost;
-
-      state.vaults.comm -= totalDiscount;
-      state.vaults.gas += gasCost;
-      state.vaults.maint += maintCost;
-
-      state.history.unshift({
-        date: new Date().toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' }),
-        type: '🟣 Vuelta Personal (Descuento Comisión)',
-        km: kmPers.toFixed(2),
-        odoRange: `${live.odoStart.toFixed(1)} → ${state.odometer.toFixed(1)}`,
-        charged: '0.00',
-        gas: gasCost.toFixed(2),
-        maint: maintCost.toFixed(2),
-        comm: (-totalDiscount).toFixed(2),
-        credit: '0.00'
-      });
-
-      setPhase('IDLE', 'EN BASE (LISTO)');
-      guardarEstado();
     }
 
     function previsualizarGasolina() {
@@ -1506,6 +1529,10 @@
 
       const newPricePerLiter = pesos / liters;
       state.config.gasPrice = parseFloat(newPricePerLiter.toFixed(2));
+      if (odo > state.odometer) {
+        state.odometer = odo;
+        live.odoLastMark = odo;
+      }
 
       let note = `⛽ Carga Gasolina (${liters}L @ $${newPricePerLiter.toFixed(2)}/L)`;
       if (isFull) {
@@ -1536,7 +1563,7 @@
       document.getElementById('fuel-pesos').value = '';
       document.getElementById('fuel-liters').value = '';
       guardarEstado();
-      alert('Carga registrada. Precio del litro y rendimiento actualizados en toda la app.');
+      alert('Carga registrada localmente. Si no tienes Wi-Fi ahorita, se subirá a la nube en cuanto te conectes.');
     }
 
     function registrarMantenimiento() {
@@ -1613,48 +1640,99 @@
       guardarEstado();
     }
 
+    // SUBIDA AUTOMÁTICA A FIREBASE CUANDO HAY CONEXIÓN O WI-FI
     async function sincronizarFirebase(manual = false) {
       const url = state.config.firebaseUrl;
       if (!url) {
-        if (manual) alert('Pega primero la URL de tu Firebase Realtime Database en el campo de arriba.');
+        if (manual) alert('Pega primero la URL de tu Firebase Realtime Database en la pestaña Tarifas / Nube.');
         return;
       }
       if (!navigator.onLine) {
-        document.getElementById('sync-log').textContent = 'Sin conexión: cambios guardados en cola offline.';
+        actualizarEstadoRed();
+        document.getElementById('sync-log').textContent = '🟠 Sin internet: datos protegidos en tu teléfono. Subirán automáticamente al conectar Wi-Fi.';
+        if (manual) alert('No tienes conexión ahorita, pero tus datos están a salvo en el teléfono y se subirán solos al detectar Wi-Fi.');
         return;
       }
+
+      document.getElementById('sync-log').textContent = '⏳ Subiendo datos a Firebase...';
       try {
         const res = await fetch(`${url}/corolla_flotilla.json`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...state, lastSync: new Date().toISOString() })
+          body: JSON.stringify({ ...state, pendingSync: false, lastSync: new Date().toISOString() })
         });
         if (res.ok) {
           state.pendingSync = false;
           localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-          document.getElementById('sync-log').textContent = '✅ Sincronizado con Firebase: ' + new Date().toLocaleTimeString();
-          if (manual) alert('Datos respaldados correctamente en Firebase.');
+          actualizarEstadoRed();
+          document.getElementById('sync-log').textContent = '✅ Sincronizado en la nube: ' + new Date().toLocaleTimeString();
+          if (manual) alert('✅ Todos tus registros locales ya están respaldados en Firebase.');
         }
       } catch (e) {
-        document.getElementById('sync-log').textContent = '⚠️ Error al sincronizar. Se reintentará al conectar Wi-Fi.';
+        actualizarEstadoRed();
+        document.getElementById('sync-log').textContent = '⚠️ Esperando red estable para subir registros pendientes...';
+      }
+    }
+
+    async function restaurarDesdeFirebase() {
+      const url = state.config.firebaseUrl;
+      if (!url) {
+        alert('Configura primero la URL de Firebase arriba.');
+        return;
+      }
+      if (!navigator.onLine) {
+        alert('Necesitas conexión a internet para descargar el respaldo de la nube.');
+        return;
+      }
+      if (!confirm('¿Descargar los datos guardados en Firebase y reemplazar los de este teléfono?')) return;
+      try {
+        const res = await fetch(`${url}/corolla_flotilla.json`);
+        const cloudData = await res.json();
+        if (cloudData && cloudData.odometer) {
+          state = { ...state, ...cloudData, pendingSync: false };
+          live.odoLastMark = state.odometer;
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+          actualizarUI();
+          alert('✅ Datos descargados correctamente desde Firebase.');
+        } else {
+          alert('No se encontraron datos previos en esa URL de Firebase.');
+        }
+      } catch (e) {
+        alert('Error al conectar con Firebase.');
       }
     }
 
     function actualizarEstadoRed() {
       const badge = document.getElementById('net-status');
       if (navigator.onLine) {
-        badge.className = 'pill-btn online';
-        badge.textContent = '🟢 Online';
         if (state.pendingSync && state.config.firebaseUrl) {
-          sincronizarFirebase(false);
+          badge.className = 'pill-btn pending';
+          badge.textContent = '🔄 Subiendo...';
+        } else {
+          badge.className = 'pill-btn online';
+          badge.textContent = '🟢 Online';
         }
       } else {
         badge.className = 'pill-btn offline';
-        badge.textContent = '🟠 Offline';
+        badge.textContent = state.pendingSync ? '🟠 Offline (Pendiente)' : '🟠 Offline (Listo)';
       }
     }
-    window.addEventListener('online', actualizarEstadoRed);
+
+    // DETECTAR EN TIEMPO REAL CUANDO REGRESA EL WI-FI O LOS DATOS
+    window.addEventListener('online', () => {
+      actualizarEstadoRed();
+      if (state.pendingSync && state.config.firebaseUrl) {
+        sincronizarFirebase(false);
+      }
+    });
     window.addEventListener('offline', actualizarEstadoRed);
+
+    // REVISIÓN PERIÓDICA CADA 15 SEGUNDOS POR SI HAY DATOS PENDIENTES DE SUBIR
+    setInterval(() => {
+      if (navigator.onLine && state.pendingSync && state.config.firebaseUrl) {
+        sincronizarFirebase(false);
+      }
+    }, 15000);
 
     function exportarCSV() {
       let csv = 'Fecha,Tipo,Km,Odometro,Cobrado,Gasolina,Taller,Comision,Credito\n';
@@ -1669,34 +1747,20 @@
     }
 
     function reiniciarTodo() {
-      if (confirm('¿Restaurar al corte base real de hoy (Odo 53,624 km, carga de $334.45 y traslado de 22.7 km)?')) {
-        const currentOdo = state.odometer;
+      if (confirm('¿Restaurar al corte base real de hoy (ODO 53,624 km, carga de $334.45 y traslado de 22.7 km)?')) {
         const currentFirebase = state.config.firebaseUrl;
         state = obtenerEstadoBaseReal();
-        state.odometer = currentOdo;
         state.config.firebaseUrl = currentFirebase;
+        live.odoLastMark = state.odometer;
         guardarEstado();
       }
-    }
-
-    function actualizarTelemetriaUI() {
-      document.getElementById('live-km').textContent = live.kmCurrentLeg.toFixed(2) + ' km';
-      const mins = String(Math.floor(live.secondsTotal / 60)).padStart(2, '0');
-      const secs = String(live.secondsTotal % 60).padStart(2, '0');
-      document.getElementById('live-time').textContent = `${mins}:${secs}`;
-      document.getElementById('live-speed').textContent = live.speedKmh + ' km/h';
-
-      document.getElementById('sum-odo-start').textContent = (live.odoStart || state.odometer).toLocaleString('es-MX', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' km';
-      document.getElementById('sum-ab').textContent = live.kmAB.toFixed(2) + ' km';
-      document.getElementById('sum-bc').textContent = live.kmBC.toFixed(2) + ' km';
-      document.getElementById('sum-ca').textContent = live.kmCA.toFixed(2) + ' km';
     }
 
     function actualizarUI() {
       const odoFormatted = state.odometer.toLocaleString('es-MX', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
       document.getElementById('odo-val').textContent = odoFormatted;
-      document.getElementById('man-base-odo').textContent = odoFormatted;
       document.getElementById('fuel-odo').value = state.odometer.toFixed(1);
+      actualizarResumenTramosUI();
 
       document.getElementById('v-gas').textContent = '$' + state.vaults.gas.toFixed(2);
       document.getElementById('v-maint').textContent = '$' + state.vaults.maint.toFixed(2);
@@ -1732,13 +1796,10 @@
       document.getElementById('cfg-comm-pct').value = state.config.commPct;
       document.getElementById('cfg-firebase-url').value = state.config.firebaseUrl;
 
-      const sel = document.getElementById('quick-route-select');
       const rList = document.getElementById('routes-list');
-      sel.innerHTML = '<option value="">-- Seleccionar tarifa fija --</option>';
       rList.innerHTML = '';
 
       state.routes.forEach((r, idx) => {
-        sel.innerHTML += `<option value="${idx}">${r.name} (${r.km} km) — $${r.price}</option>`;
         rList.innerHTML += `
           <div class="route-item">
             <div class="route-info">
@@ -1764,7 +1825,7 @@
               <span style="color:var(--emerald); font-weight:700;">$${h.charged}</span>
             </div>
             <div style="font-size:11px; color:var(--text-muted); margin:2px 0;">
-              ${h.date} • ${h.km} km (Odo: ${h.odoRange})
+              ${h.date} • ${h.km} km (ODO: ${h.odoRange})
             </div>
             <div style="font-size:11px;">
               ⛽ $${h.gas} | 🔧 $${h.maint} | 👨‍✈️ $${h.comm} | 🏦 $${h.credit}
