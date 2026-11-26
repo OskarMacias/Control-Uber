@@ -175,6 +175,35 @@
     .tele-label { font-size: 11px; color: var(--text-muted); margin-bottom: 4px; }
     .tele-val { font-size: 17px; font-weight: 800; color: var(--text-main); }
 
+    .earn-box {
+      background: rgba(16, 185, 129, 0.08);
+      border: 1px solid rgba(16, 185, 129, 0.35);
+      border-radius: 12px;
+      padding: 12px 10px;
+      text-align: center;
+    }
+
+    .earn-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #a7f3d0;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    .earn-val {
+      font-size: 21px;
+      font-weight: 800;
+      color: #34d399;
+    }
+
+    .earn-sub {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 3px;
+    }
+
     .btn-action {
       width: 100%;
       border: none;
@@ -410,7 +439,7 @@
 
   <main class="app-container">
 
-    <!-- COLUMNA 1: CONTROL POR SELLOS DE ODÓMETRO REAL -->
+    <!-- COLUMNA 1: CONTROL POR SELLOS DE ODÓMETRO REAL + GANANCIA DÍA / SEMANA -->
     <section id="sec-ruta" class="tab-section active">
       <div class="card">
         <div class="card-header">
@@ -552,6 +581,27 @@
             <span>🏠 Finalizar Vuelta Personal</span>
             <span class="btn-sub">Pide ODO final y descuenta costo puro de tu comisión</span>
           </button>
+        </div>
+      </div>
+
+      <!-- TARJETA NUEVA: TU GANANCIA LIBRE (HOY Y SEMANA LUNES-DOMINGO) -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">👨‍✈️ Tu Ganancia Libre (Dinero Tuyo)</span>
+          <span style="font-size:11px; color:var(--emerald); font-weight:700;" id="week-range-badge">Lun → Dom</span>
+        </div>
+
+        <div class="row-2">
+          <div class="earn-box">
+            <div class="earn-label">Ganancia de Hoy</div>
+            <div class="earn-val" id="earn-today">$0.00</div>
+            <div class="earn-sub" id="earn-today-sub">0 viajes hoy</div>
+          </div>
+          <div class="earn-box">
+            <div class="earn-label">Semana (Lun – Dom)</div>
+            <div class="earn-val" id="earn-week">$0.00</div>
+            <div class="earn-sub" id="earn-week-sub">Corte al domingo</div>
+          </div>
         </div>
       </div>
     </section>
@@ -813,7 +863,6 @@
   </nav>
 
   <script>
-    // REGISTRO DE SERVICE WORKER PARA FUNCIONAMIENTO 100% SIN INTERNET NI DATOS
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js').then((reg) => {
@@ -822,8 +871,8 @@
       });
     }
 
-    const STORAGE_KEY = 'corolla_hev_flotilla_v13';
-    const LIVE_SESSION_KEY = 'corolla_hev_live_session_v13';
+    const STORAGE_KEY = 'corolla_hev_flotilla_v14';
+    const LIVE_SESSION_KEY = 'corolla_hev_live_session_v14';
 
     function obtenerEstadoBaseReal() {
       return {
@@ -860,6 +909,7 @@
         history: [
           {
             date: '25/11/26, 3:47 p. m.',
+            timestamp: new Date(2026, 10, 25, 15, 47).getTime(),
             type: '🚚 Traslado Vacío Operativo (40 min) - El Diez → Villa Juárez',
             km: '22.70',
             odoRange: '53602.0 → 53624.0',
@@ -871,6 +921,7 @@
           },
           {
             date: '25/11/26, 3:06 p. m.',
+            timestamp: new Date(2026, 10, 25, 15, 6).getTime(),
             type: '⛽ Carga Tanque Lleno El Diez (14.082L @ $23.75/L)',
             km: '0',
             odoRange: '53602.0',
@@ -914,10 +965,10 @@
     }
 
     function cargarEstado() {
-      // Migrar datos si existían en v12 para no perder nada
-      const savedV13 = localStorage.getItem(STORAGE_KEY);
+      const savedV14 = localStorage.getItem(STORAGE_KEY);
+      const savedV13 = localStorage.getItem('corolla_hev_flotilla_v13');
       const savedV12 = localStorage.getItem('corolla_hev_flotilla_v12');
-      const raw = savedV13 || savedV12;
+      const raw = savedV14 || savedV13 || savedV12;
 
       if (raw) {
         try {
@@ -935,7 +986,7 @@
         localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
       }
 
-      const savedLive = localStorage.getItem(LIVE_SESSION_KEY);
+      const savedLive = localStorage.getItem(LIVE_SESSION_KEY) || localStorage.getItem('corolla_hev_live_session_v13');
       if (savedLive) {
         try {
           const parsedLive = JSON.parse(savedLive);
@@ -980,6 +1031,67 @@
       }
     }
 
+    // PARSEO DE FECHA PARA CÁLCULO EXACTO DE HOY Y SEMANA (LUNES A DOMINGO)
+    function obtenerFechaMovimiento(item) {
+      if (item.timestamp && typeof item.timestamp === 'number') {
+        return new Date(item.timestamp);
+      }
+      if (item.date) {
+        const match = String(item.date).match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
+        if (match) {
+          const d = parseInt(match[1], 10);
+          const m = parseInt(match[2], 10) - 1;
+          let y = parseInt(match[3], 10);
+          if (y < 100) y += 2000;
+          return new Date(y, m, d, 12, 0, 0);
+        }
+      }
+      return null;
+    }
+
+    function calcularGananciasDiaYSemana() {
+      const ahora = new Date();
+      const inicioHoy = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate(), 0, 0, 0, 0);
+
+      // Lunes de la semana actual (getDay(): 0 = Domingo, 1 = Lunes ... 6 = Sábado)
+      const diaSemana = ahora.getDay();
+      const diffLunes = diaSemana === 0 ? -6 : 1 - diaSemana;
+      const inicioLunes = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate() + diffLunes, 0, 0, 0, 0);
+      const finDomingo = new Date(inicioLunes.getFullYear(), inicioLunes.getMonth(), inicioLunes.getDate() + 6, 23, 59, 59, 999);
+
+      let gananciaHoy = 0;
+      let viajesHoy = 0;
+      let gananciaSemana = 0;
+      let viajesSemana = 0;
+
+      state.history.forEach(item => {
+        const comm = parseFloat(item.comm) || 0;
+        const charged = parseFloat(item.charged) || 0;
+        if (comm === 0 && charged === 0) return;
+
+        const fechaMov = obtenerFechaMovimiento(item);
+        if (!fechaMov) return;
+
+        if (fechaMov >= inicioHoy) {
+          gananciaHoy += comm;
+          if (charged > 0) viajesHoy++;
+        }
+        if (fechaMov >= inicioLunes && fechaMov <= finDomingo) {
+          gananciaSemana += comm;
+          if (charged > 0) viajesSemana++;
+        }
+      });
+
+      const fmt = (f) => f.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
+      return {
+        gananciaHoy,
+        viajesHoy,
+        gananciaSemana,
+        viajesSemana,
+        rangoSemanaTexto: `Lun ${fmt(inicioLunes)} – Dom ${fmt(finDomingo)}`
+      };
+    }
+
     setInterval(() => {
       if (live.phase !== 'IDLE') {
         live.secondsTotal++;
@@ -998,7 +1110,6 @@
       }
     }, 1000);
 
-    // SISTEMA DE MODAL PARA SELLAR ODÓMETRO REAL EN CADA PASO
     function abrirModalOdo({ action, title, desc, refOdo, defaultOdo, askFare = false, allowEqualOdo = true }) {
       modalContext = { action, refOdo, askFare, allowEqualOdo };
       document.getElementById('modal-title').textContent = title;
@@ -1369,6 +1480,7 @@
       const mins = Math.round(live.secondsTotal / 60);
       state.history.unshift({
         date: new Date().toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' }),
+        timestamp: Date.now(),
         type: `${tipoEtiqueta} (${mins} min)`,
         km: totalKm.toFixed(2),
         odoRange: `${live.odoStart.toFixed(1)} → ${odoFinal.toFixed(1)}`,
@@ -1397,6 +1509,7 @@
       const mins = Math.round(live.secondsTotal / 60);
       state.history.unshift({
         date: new Date().toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' }),
+        timestamp: Date.now(),
         type: `🟣 Vuelta Personal (${mins} min • Descuento Comisión)`,
         km: kmPers.toFixed(2),
         odoRange: `${live.odoStart.toFixed(1)} → ${odoFinal.toFixed(1)}`,
@@ -1469,6 +1582,7 @@
 
       state.history.unshift({
         date: new Date().toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' }),
+        timestamp: Date.now(),
         type: `🏦 Pago Mensualidad Crédito ($${meta.toFixed(2)})`,
         km: '0',
         odoRange: state.odometer.toFixed(1),
@@ -1550,6 +1664,7 @@
       state.vaults.gas -= pesos;
       state.history.unshift({
         date: new Date().toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' }),
+        timestamp: Date.now(),
         type: note,
         km: '0',
         odoRange: odo.toFixed(1),
@@ -1576,6 +1691,7 @@
       state.vaults.maint -= cost;
       state.history.unshift({
         date: new Date().toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' }),
+        timestamp: Date.now(),
         type: '🔧 ' + desc,
         km: '0',
         odoRange: state.odometer.toFixed(1),
@@ -1640,7 +1756,6 @@
       guardarEstado();
     }
 
-    // SUBIDA AUTOMÁTICA A FIREBASE CUANDO HAY CONEXIÓN O WI-FI
     async function sincronizarFirebase(manual = false) {
       const url = state.config.firebaseUrl;
       if (!url) {
@@ -1718,7 +1833,6 @@
       }
     }
 
-    // DETECTAR EN TIEMPO REAL CUANDO REGRESA EL WI-FI O LOS DATOS
     window.addEventListener('online', () => {
       actualizarEstadoRed();
       if (state.pendingSync && state.config.firebaseUrl) {
@@ -1727,7 +1841,6 @@
     });
     window.addEventListener('offline', actualizarEstadoRed);
 
-    // REVISIÓN PERIÓDICA CADA 15 SEGUNDOS POR SI HAY DATOS PENDIENTES DE SUBIR
     setInterval(() => {
       if (navigator.onLine && state.pendingSync && state.config.firebaseUrl) {
         sincronizarFirebase(false);
@@ -1761,6 +1874,14 @@
       document.getElementById('odo-val').textContent = odoFormatted;
       document.getElementById('fuel-odo').value = state.odometer.toFixed(1);
       actualizarResumenTramosUI();
+
+      // Actualizar tarjeta de Ganancia de Hoy y Semana (Lunes a Domingo)
+      const { gananciaHoy, viajesHoy, gananciaSemana, viajesSemana, rangoSemanaTexto } = calcularGananciasDiaYSemana();
+      document.getElementById('week-range-badge').textContent = rangoSemanaTexto;
+      document.getElementById('earn-today').textContent = '$' + gananciaHoy.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      document.getElementById('earn-today-sub').textContent = `${viajesHoy} ${viajesHoy === 1 ? 'servicio hoy' : 'servicios hoy'}`;
+      document.getElementById('earn-week').textContent = '$' + gananciaSemana.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      document.getElementById('earn-week-sub').textContent = `${viajesSemana} ${viajesSemana === 1 ? 'servicio' : 'servicios'} • Corte Dom`;
 
       document.getElementById('v-gas').textContent = '$' + state.vaults.gas.toFixed(2);
       document.getElementById('v-maint').textContent = '$' + state.vaults.maint.toFixed(2);
