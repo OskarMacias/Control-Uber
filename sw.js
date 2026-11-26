@@ -1,4 +1,4 @@
-const CACHE_NAME = 'corolla-hev-offline-v13';
+const CACHE_NAME = 'corolla-hev-offline-v14';
 const ASSETS = [
   './',
   './index.html',
