@@ -186,7 +186,7 @@
       border: 1px dashed var(--blue);
       color: #93c5fd;
       border-radius: 10px;
-      padding: 9px 12px;
+      padding: 10px 12px;
       font-size: 12px;
       font-weight: 700;
       cursor: pointer;
@@ -383,7 +383,7 @@
 
   <main class="app-container">
 
-    <!-- COLUMNA 1: EN RUTA (1-TOQUE) + REGISTRO MANUAL -->
+    <!-- COLUMNA 1: EN RUTA (1-TOQUE) + REGISTRO POR ODÓMETRO GENERAL -->
     <section id="sec-ruta" class="tab-section active">
       <div id="sim-panel" class="card hidden" style="border-color: var(--blue);">
         <div class="card-header">
@@ -417,12 +417,16 @@
           </div>
         </div>
 
-        <!-- BOTÓN DE CORRECCIÓN MANUAL DE KM Y TIEMPO DEL TRAMO -->
-        <button id="btn-edit-leg-km" class="btn-edit-leg hidden" onclick="editarTramoEnVivo()">
-          <span>✎ Ajustar km y tiempo del tramo actual</span>
+        <!-- BOTÓN PARA PONER EL ODÓMETRO TOTAL DEL TABLERO EN CUALQUIER MOMENTO -->
+        <button id="btn-edit-leg-km" class="btn-edit-leg hidden" onclick="ajustarConOdometroTotal()">
+          <span>🔢 Poner Odómetro Total del Tablero (ODO) y Tiempo</span>
         </button>
 
         <div id="cycle-summary" class="hidden" style="background:var(--bg-input); padding:10px; border-radius:10px; font-size:12px; margin-bottom:12px; border:1px solid var(--border);">
+          <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+            <span style="color:var(--text-muted);">ODO Inicial del Servicio:</span>
+            <strong id="sum-odo-start" style="color:#93c5fd;">53,624.0 km</strong>
+          </div>
           <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
             <span style="color:var(--text-muted);">Acercamiento (A → B):</span>
             <strong id="sum-ab">0.00 km</strong>
@@ -546,39 +550,54 @@
         </div>
       </div>
 
-      <!-- TARJETA NUEVA: REGISTRO MANUAL DIRECTO (SIN CRONÓMETRO / EN FRÍO) -->
-      <div class="card" style="border-color: rgba(59, 130, 246, 0.4);">
+      <!-- TARJETA: REGISTRO DIRECTO POR ODÓMETRO GENERAL DEL TABLERO -->
+      <div class="card" style="border-color: rgba(59, 130, 246, 0.45);">
         <div class="card-header">
-          <span class="card-title" style="color:#93c5fd;">✍️ Registro Manual Directo (Sin GPS)</span>
+          <span class="card-title" style="color:#93c5fd;">🔢 Registro por Odómetro Total (ODO)</span>
+        </div>
+        <div style="font-size:11px; color:var(--text-muted); margin-bottom:10px;">
+          Ideal cuando apagas y prendes el carro: pon el <strong>ODO total</strong> que marca tu tablero ahorita y la app calcula sola los km recorridos desde <strong id="man-base-odo" style="color:#fff;">53,624.0</strong> km.
         </div>
         <div class="form-group">
           <label>Tipo de Movimiento</label>
           <select id="man-type">
-            <option value="TRASLADO">🚚 Traslado Vacío Operativo (Ej. Gasolinera → Base $0)</option>
             <option value="SERVICIO">🚕 Servicio con Cliente Cobrado</option>
+            <option value="TRASLADO">🚚 Traslado Vacío Operativo ($0)</option>
             <option value="PERSONAL">🟣 Vuelta Personal (Descuenta costo a tu comisión)</option>
           </select>
         </div>
-        <div class="row-3">
+        <div class="row-2">
           <div class="form-group">
-            <label>Km Reales</label>
-            <input type="number" id="man-km" placeholder="Ej. 22.7" step="0.1">
+            <label>Modo de Captura</label>
+            <select id="man-mode" onchange="cambiarModoManual()">
+              <option value="ODO_FINAL">Odómetro Total Final (ODO)</option>
+              <option value="DIST_DIRECTA">Distancia Recorrida (km)</option>
+            </select>
           </div>
           <div class="form-group">
-            <label>Minutos</label>
-            <input type="number" id="man-mins" placeholder="Ej. 40">
+            <label id="man-val-label">ODO Final en Tablero</label>
+            <input type="number" id="man-val" placeholder="Ej. 53646" step="0.1" oninput="previsualizarManual()">
+          </div>
+        </div>
+        <div class="row-2">
+          <div class="form-group">
+            <label>Minutos Totales</label>
+            <input type="number" id="man-mins" placeholder="Ej. 35">
           </div>
           <div class="form-group">
-            <label>Cobro ($)</label>
-            <input type="number" id="man-fare" value="0" placeholder="0">
+            <label>Cobro ($ MXN)</label>
+            <input type="number" id="man-fare" value="0" placeholder="0" oninput="previsualizarManual()">
           </div>
         </div>
         <div class="form-group">
           <label>Nota / Ruta (Opcional)</label>
-          <input type="text" id="man-note" placeholder="Ej. Regreso de El 10 a Villa Juárez">
+          <input type="text" id="man-note" placeholder="Ej. Villa Juárez → Culiacán">
+        </div>
+        <div id="man-preview" style="font-size:12px; color:#6ee7b7; margin-bottom:10px;">
+          Ingresa el ODO del tablero para ver los km calculados automáticamente.
         </div>
         <button class="btn-action bg-blue" style="padding:12px; font-size:14px; margin-bottom:0;" onclick="guardarRegistroManual()">
-          💾 Guardar Kilómetros y Repartir en Cajas
+          💾 Calcular Km Reales y Guardar en Cajas
         </button>
       </div>
     </section>
@@ -811,7 +830,7 @@
       });
     }
 
-    const STORAGE_KEY = 'corolla_hev_flotilla_v10';
+    const STORAGE_KEY = 'corolla_hev_flotilla_v11';
 
     function obtenerEstadoBaseReal() {
       return {
@@ -833,8 +852,8 @@
           loan2PaidMonths: 0
         },
         vaults: {
-          gas: -307.49, // -334.45 carga tanque lleno + 26.96 acumulado traslado 22.7 km
-          maint: 20.43, // 22.7 km * $0.90/km
+          gas: -307.49,
+          maint: 20.43,
           comm: 0.00,
           credit: 0.00
         },
@@ -885,6 +904,7 @@
       speedKmh: 0,
       fareBase: 0,
       odoStart: 0,
+      odoLegStart: 0,
       odoPickup: 0,
       odoDrop: 0,
       simMode: false,
@@ -919,25 +939,87 @@
       }
     }
 
+    function cambiarModoManual() {
+      const mode = document.getElementById('man-mode').value;
+      const lbl = document.getElementById('man-val-label');
+      const inp = document.getElementById('man-val');
+      if (mode === 'ODO_FINAL') {
+        lbl.textContent = 'ODO Final en Tablero';
+        inp.placeholder = `Mayor a ${state.odometer.toFixed(0)}`;
+      } else {
+        lbl.textContent = 'Km Recorridos';
+        inp.placeholder = 'Ej. 22.7';
+      }
+      previsualizarManual();
+    }
+
+    function previsualizarManual() {
+      const mode = document.getElementById('man-mode').value;
+      const val = parseFloat(document.getElementById('man-val').value);
+      const fare = parseFloat(document.getElementById('man-fare').value) || 0;
+      const prev = document.getElementById('man-preview');
+
+      if (isNaN(val) || val <= 0) {
+        prev.textContent = 'Ingresa el dato para calcular automáticamente los kilómetros reales.';
+        return;
+      }
+
+      let kmCalc = 0;
+      if (mode === 'ODO_FINAL') {
+        kmCalc = val - state.odometer;
+        if (kmCalc <= 0) {
+          prev.innerHTML = `<span style="color:#f87171;">⚠️ El ODO final (${val}) debe ser mayor a tu ODO actual (${state.odometer.toFixed(1)} km).</span>`;
+          return;
+        }
+      } else {
+        kmCalc = val;
+      }
+
+      const costPerKm = (state.config.gasPrice / state.config.kml) + state.config.maintPerKm;
+      const autoCost = kmCalc * costPerKm;
+      const netFree = Math.max(0, fare - autoCost);
+      const comm = netFree * (state.config.commPct / 100);
+      const credit = netFree - comm;
+
+      prev.innerHTML = `
+        ✅ <strong>Distancia calculada: ${kmCalc.toFixed(2)} km</strong> (ODO quedará en ${(state.odometer + kmCalc).toFixed(1)} km)<br>
+        Costo Auto: $${autoCost.toFixed(2)} | Comisión: $${comm.toFixed(2)} | Crédito: $${credit.toFixed(2)}
+      `;
+    }
+
+    // GUARDAR REGISTRO MANUAL POR ODÓMETRO TOTAL O DISTANCIA
     function guardarRegistroManual() {
       const tipo = document.getElementById('man-type').value;
-      const km = parseFloat(document.getElementById('man-km').value);
+      const mode = document.getElementById('man-mode').value;
+      const val = parseFloat(document.getElementById('man-val').value);
       const mins = parseInt(document.getElementById('man-mins').value) || 0;
       const fareRaw = document.getElementById('man-fare').value.trim();
       const fare = fareRaw === '' ? 0 : parseFloat(fareRaw);
       const nota = document.getElementById('man-note').value.trim();
 
-      if (isNaN(km) || km <= 0) {
-        alert('Ingresa los kilómetros recorridos (mayor a 0).');
+      if (isNaN(val) || val <= 0) {
+        alert('Ingresa el odómetro final o los kilómetros recorridos.');
         return;
       }
+
+      let km = 0;
+      if (mode === 'ODO_FINAL') {
+        km = val - state.odometer;
+        if (km <= 0) {
+          alert(`El odómetro final (${val}) debe ser mayor al odómetro actual (${state.odometer.toFixed(1)} km).`);
+          return;
+        }
+      } else {
+        km = val;
+      }
+
       if (isNaN(fare) || fare < 0) {
         alert('Ingresa un cobro válido (0 o mayor).');
         return;
       }
 
       const odoInicio = state.odometer;
-      state.odometer += km;
+      state.odometer = mode === 'ODO_FINAL' ? val : (state.odometer + km);
 
       const gasCost = km * (state.config.gasPrice / state.config.kml);
       const maintCost = km * state.config.maintPerKm;
@@ -949,14 +1031,14 @@
 
       if (tipo === 'PERSONAL') {
         comm = -totalAutoCost;
-        label = `🟣 Vuelta Personal Manual (${mins} min)${nota ? ' - ' + nota : ''}`;
+        label = `🟣 Vuelta Personal (${mins} min)${nota ? ' - ' + nota : ''}`;
       } else {
         const netFree = Math.max(0, fare - totalAutoCost);
         comm = netFree * (state.config.commPct / 100);
         credit = netFree - comm;
         label = tipo === 'TRASLADO'
-          ? `🚚 Traslado Vacío Manual (${mins} min)${nota ? ' - ' + nota : ''}`
-          : `🚕 Servicio Manual (${mins} min)${nota ? ' - ' + nota : ''}`;
+          ? `🚚 Traslado Vacío (${mins} min)${nota ? ' - ' + nota : ''}`
+          : `🚕 Servicio (${mins} min)${nota ? ' - ' + nota : ''}`;
       }
 
       state.vaults.gas += gasCost;
@@ -976,13 +1058,14 @@
         credit: credit.toFixed(2)
       });
 
-      document.getElementById('man-km').value = '';
+      document.getElementById('man-val').value = '';
       document.getElementById('man-mins').value = '';
       document.getElementById('man-fare').value = '0';
       document.getElementById('man-note').value = '';
+      document.getElementById('man-preview').textContent = 'Ingresa el dato para calcular automáticamente los kilómetros reales.';
 
       guardarEstado();
-      alert(`¡Listo! Se registraron ${km} km y se actualizó el odómetro a ${state.odometer.toFixed(1)} km.`);
+      alert(`¡Listo! Se calcularon ${km.toFixed(2)} km reales y el odómetro quedó en ${state.odometer.toFixed(1)} km.`);
     }
 
     function obtenerMetaMensualActual() {
@@ -1047,32 +1130,43 @@
     }
 
     function calibrarOdometro() {
-      const val = prompt('Ingresa el kilometraje actual exacto de tu tablero Corolla:', state.odometer.toFixed(1));
+      const val = prompt('Ingresa el kilometraje actual exacto de tu tablero Corolla (ODO):', state.odometer.toFixed(1));
       if (val !== null && !isNaN(parseFloat(val))) {
         state.odometer = parseFloat(val);
         guardarEstado();
       }
     }
 
-    function editarTramoEnVivo() {
+    // AJUSTE EN VIVO USANDO DIRECTAMENTE EL ODÓMETRO TOTAL DEL TABLERO (ODO)
+    function ajustarConOdometroTotal() {
       if (live.phase === 'IDLE' || live.phase === 'POST_DROP') {
-        alert('Inicia un tramo en movimiento para ajustar su distancia y tiempo.');
+        alert('Inicia un tramo en movimiento para ajustar con el odómetro.');
         return;
       }
-      const nuevoKm = prompt(
-        `Distancia actual del tramo: ${live.kmCurrentLeg.toFixed(2)} km.\nIngresa los kilómetros reales según tu tablero:`,
-        live.kmCurrentLeg.toFixed(1)
+
+      const odoInicioTramo = live.odoLegStart || live.odoStart || state.odometer;
+      const sugerido = Math.max(odoInicioTramo, state.odometer).toFixed(1);
+
+      const nuevoOdo = prompt(
+        `Iniciaste este tramo en ODO: ${odoInicioTramo.toFixed(1)} km.\nIngresa el ODÓMETRO TOTAL (ODO) que marca tu tablero ahorita:\n(La app restará automáticamente para sacar los km reales)`,
+        sugerido
       );
-      if (nuevoKm !== null) {
-        const parsedKm = parseFloat(nuevoKm);
-        if (!isNaN(parsedKm) && parsedKm >= 0) {
-          const diferencia = parsedKm - live.kmCurrentLeg;
-          live.kmCurrentLeg = parsedKm;
-          state.odometer = Math.max(0, state.odometer + diferencia);
+
+      if (nuevoOdo !== null) {
+        const parsedOdo = parseFloat(nuevoOdo);
+        if (!isNaN(parsedOdo) && parsedOdo >= odoInicioTramo) {
+          const kmRealesTramo = parsedOdo - odoInicioTramo;
+          const diferencia = kmRealesTramo - live.kmCurrentLeg;
+
+          live.kmCurrentLeg = kmRealesTramo;
+          state.odometer = parsedOdo;
 
           if (live.phase === 'PICKUP') live.kmAB = Math.max(0, live.kmAB + diferencia);
           else if (live.phase === 'TRIP' || live.phase === 'RETURN_CLIENT') live.kmBC = Math.max(0, live.kmBC + diferencia);
           else if (live.phase === 'RETURNING' || live.phase === 'PERSONAL') live.kmCA = Math.max(0, live.kmCA + diferencia);
+        } else if (!isNaN(parsedOdo)) {
+          alert(`El odómetro actual (${parsedOdo}) no puede ser menor al odómetro con el que iniciaste este tramo (${odoInicioTramo.toFixed(1)} km).`);
+          return;
         }
       }
 
@@ -1183,6 +1277,7 @@
     function setPhase(newPhase, badgeText) {
       live.phase = newPhase;
       live.kmCurrentLeg = 0;
+      live.odoLegStart = state.odometer;
       document.getElementById('phase-badge').textContent = badgeText;
       ['controls-idle', 'controls-pickup', 'controls-trip', 'controls-post-drop', 'controls-waiting', 'controls-return-client', 'controls-returning', 'controls-personal']
         .forEach(id => document.getElementById(id).classList.add('hidden'));
@@ -1591,13 +1686,16 @@
       document.getElementById('live-time').textContent = `${mins}:${secs}`;
       document.getElementById('live-speed').textContent = live.speedKmh + ' km/h';
 
+      document.getElementById('sum-odo-start').textContent = (live.odoStart || state.odometer).toLocaleString('es-MX', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' km';
       document.getElementById('sum-ab').textContent = live.kmAB.toFixed(2) + ' km';
       document.getElementById('sum-bc').textContent = live.kmBC.toFixed(2) + ' km';
       document.getElementById('sum-ca').textContent = live.kmCA.toFixed(2) + ' km';
     }
 
     function actualizarUI() {
-      document.getElementById('odo-val').textContent = state.odometer.toLocaleString('es-MX', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+      const odoFormatted = state.odometer.toLocaleString('es-MX', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+      document.getElementById('odo-val').textContent = odoFormatted;
+      document.getElementById('man-base-odo').textContent = odoFormatted;
       document.getElementById('fuel-odo').value = state.odometer.toFixed(1);
 
       document.getElementById('v-gas').textContent = '$' + state.vaults.gas.toFixed(2);
